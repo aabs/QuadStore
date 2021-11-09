@@ -10,6 +10,6 @@ public abstract class SuperStore : ITripleStore
 
     public abstract int InsertTriple(Triple t);
 
-    public static Triple NewTriple(Uri subject, Uri predicate, Uri @object)
+    public Triple NewTriple(Uri subject, Uri predicate, Uri @object)
         => new(subject, predicate, @object);
 }
