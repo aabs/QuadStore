@@ -1,79 +1,77 @@
-﻿namespace TripleStore.Core
+﻿namespace TripleStore.Core;
+
+public class ItemRegistry<T>
 {
-    public class IriID
+    private int ItemId = -1;
+
+    private readonly Dictionary<int, T> forwardLUT = new();
+    private readonly Dictionary<int, int> reverseLUT = new(); // reverse lookup from URI hashcode to ID
+    public int Add(T t)
     {
-        private uint _id;
-        public uint Prefix { get => _id >> 16; }
-        public uint Fragment { get => _id & 0xFFFF; }
-
-        public IriID(ushort prefix, ushort fragment)
+        var hashcode = t.GetHashCode();
+        if (reverseLUT.ContainsKey(hashcode))
         {
-            _id = (uint)((prefix << 16) & fragment);
+            return reverseLUT[hashcode];
         }
 
-        public IriID(uint id)
-        {
-            _id = id;
-        }
-
-        // generate hashcode
-        public override int GetHashCode() => _id.GetHashCode();
-
+        var val = Interlocked.Increment(ref ItemId);
+        reverseLUT[hashcode] = val;
+        forwardLUT[val] = t;
+        return val;
     }
-    public static class IdUtilities
-    {
-        public static (string, string) SplitForIndexing(this Uri uri)
-        => SplitForIndexing(uri.AbsoluteUri);
 
-        private static (string, string) SplitForIndexing(this string absoluteUri)
-        {
-            var splitPoint = absoluteUri.LastIndexOf('/');
-            if (splitPoint == -1)
-            {
-                return (null, absoluteUri);
-            }
-            // split uri into two strings at last '/'
-            var prefix = absoluteUri.Substring(0, splitPoint);
-            var suffix = absoluteUri.Substring(splitPoint + 1);
-            return (prefix, suffix);
-        }
+    public T Lookup(int i)
+    {
+        return forwardLUT[i];
     }
-    public class UriRegistry
+
+    public int Get(T t)
     {
-        // LUT for URIs to int
-        private int UriId = -1;
-
-        private Dictionary<string, int> prefixMap = new Dictionary<string, int>();
-        private Dictionary<int, Uri> lutUris = new Dictionary<int, Uri>();
-        private Dictionary<int, int> rlutUris = new Dictionary<int, int>(); // reverse lookup from URI hashcode to ID
-
-        public int Add(Uri u)
+        var hashCode = t.GetHashCode();
+        if (reverseLUT.ContainsKey(hashCode))
         {
-            var hashcode = u.GetHashCode();
-            if (rlutUris.ContainsKey(hashcode))
-            {
-                return rlutUris[hashcode];
-            }
-
-            var val = Interlocked.Increment(ref UriId);
-            rlutUris[hashcode] = val;
-            lutUris[val] = u;
-            return val;
+            return reverseLUT[hashCode];
         }
+        throw new ApplicationException("not recognised");
+    }
+}
+public class UriRegistry : ItemRegistry<Uri> {}
 
-        public Uri Lookup(int i)
+public class IriID
+{
+    private readonly uint _id;
+    public uint Prefix { get => _id >> 16; }
+    public uint Fragment { get => _id & 0xFFFF; }
+
+    public IriID(ushort prefix, ushort fragment)
+    {
+        _id = (uint)((prefix << 16) & fragment);
+    }
+
+    public IriID(uint id)
+    {
+        _id = id;
+    }
+
+    // generate hashcode
+    public override int GetHashCode() => _id.GetHashCode();
+
+}
+public static class IdUtilities
+{
+    public static (string, string) SplitForIndexing(this Uri uri)
+    => SplitForIndexing(uri.AbsoluteUri);
+
+    private static (string, string) SplitForIndexing(this string absoluteUri)
+    {
+        var splitPoint = absoluteUri.LastIndexOf('/');
+        if (splitPoint == -1)
         {
-            return lutUris[i];
+            return (null, absoluteUri);
         }
-
-        public int Get(Uri u)
-        {
-            var hashCode = u.GetHashCode();
-            if (rlutUris.ContainsKey(hashCode))
-            {
-                return rlutUris[hashCode];
-            }
-            throw new ApplicationException("URI not recognised");
-        }
+        // split uri into two strings at last '/'
+        var prefix = absoluteUri[..splitPoint];
+        var suffix = absoluteUri[(splitPoint + 1)..];
+        return (prefix, suffix);
     }
 }
