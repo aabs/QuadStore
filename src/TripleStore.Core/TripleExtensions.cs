@@ -72,6 +72,7 @@ public static class TripleExtensions
         return ts;
     }
 }
+
 public static class UriHelpers
 {
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>")]
@@ -80,5 +81,4 @@ public static class UriHelpers
         if (Uri.TryCreate(s, UriKind.Absolute, out Uri result)) return result;
         throw new FormatException("Invalid URI format");
     }
-
 }

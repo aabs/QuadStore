@@ -59,9 +59,11 @@ public class TripleCollection : SuperStore, ITripleStore, IEnumerable<Triple>, I
     {
         return new Enumerator(this);
     }
-    #endregion
+
+    #endregion Enumeration And Access
 
     #region IRandomAccessStore
+
     public Triple ElementAt(int index)
     {
         return new Triple(triples[index, 0], triples[index, 1], triples[index, 2]);
@@ -87,9 +89,10 @@ public class TripleCollection : SuperStore, ITripleStore, IEnumerable<Triple>, I
 
     public int ObjectOrdinalAt(int index) => triples[index, 2];
 
-    #endregion Enumeration And Access
+    #endregion IRandomAccessStore
 
     #region Enumeration
+
     [SuppressMessage("Usage", "CA2231")]
     public struct Enumerator
     {
@@ -156,6 +159,5 @@ public class TripleCollection : SuperStore, ITripleStore, IEnumerable<Triple>, I
         }
     }
 
-
-    #endregion
+    #endregion Enumeration
 }

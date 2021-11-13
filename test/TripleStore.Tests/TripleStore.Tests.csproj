@@ -20,4 +20,8 @@
     <ProjectReference Include="..\..\src\TripleStore.Core\TripleStore.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EditorConfigFiles Remove="C:\Dev\aabs\triple_store\test\TripleStore.Tests\.editorconfig" />
+  </ItemGroup>
+
 </Project>

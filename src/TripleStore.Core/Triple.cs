@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
 namespace TripleStore.Core;
+
 public class Triple : IEquatable<Triple>
 {
     private static UriRegistry EffectiveIndex { get => RdfCompressionContext.Instance.UriRegistry; }
@@ -44,6 +45,7 @@ public class Triple : IEquatable<Triple>
     public int SubjOrd => _subject;
     public int PredOrd => _predicate;
     public int ObjOrd => _object;
+
     public Uri Subject
     {
         get => EffectiveIndex.Lookup(_subject);

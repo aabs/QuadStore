@@ -1,9 +1,9 @@
-﻿using AutoFixture;
-using FluentAssertions;
-using NUnit.Framework;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using AutoFixture;
+using FluentAssertions;
+using NUnit.Framework;
 using TripleStore.Core;
 
 namespace TripleStore.Tests;
@@ -19,6 +19,7 @@ public class TripleStoreTests
         // Add code that runs before each test method
         _fixture = new Fixture();
     }
+
     [Test]
     public void TestCanCreateTripleStore()
     {
@@ -85,6 +86,7 @@ public class TripleStoreTests
         t2.Predicate.Should().Be(new Uri($"urn:501"));
         t2.Object.Should().Be(new Uri($"urn:502"));
     }
+
     [Test]
     public void TestCanStoreAndEnumerateManyTriples()
     {
@@ -108,6 +110,7 @@ public class TripleStoreTests
             }
         }
     }
+
     [Test]
     public void TestCanStoreAndEnumerateManyCommonTriples()
     {

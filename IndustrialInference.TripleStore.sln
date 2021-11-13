@@ -5,7 +5,12 @@ VisualStudioVersion = 17.0.31825.309
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TripleStore.Core", "src\TripleStore.Core\TripleStore.Core.csproj", "{067BE2C7-27CF-41F5-9406-0457CC50D30B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TripleStore.Tests", "test\TripleStore.Tests\TripleStore.Tests.csproj", "{F1A83593-6BD4-45EC-8012-64B6AC623FCE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TripleStore.Tests", "test\TripleStore.Tests\TripleStore.Tests.csproj", "{F1A83593-6BD4-45EC-8012-64B6AC623FCE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{DB5EDCF4-FE75-461F-8F89-3C344EA66154}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

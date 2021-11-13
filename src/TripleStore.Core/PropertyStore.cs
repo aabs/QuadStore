@@ -154,6 +154,7 @@ namespace TripleStore.Core
             public void Reset() => _en.Reset();
 
 #pragma warning disable CA1822 // Mark members as static
+
             public void Dispose()
 #pragma warning restore CA1822 // Mark members as static
             {

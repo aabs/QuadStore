@@ -1,10 +1,10 @@
-﻿using NUnit.Framework;
-using System;
-using System.Linq;
+﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using AutoFixture;
-using TripleStore.Core;
 using FluentAssertions;
+using NUnit.Framework;
+using TripleStore.Core;
 
 namespace TripleStore.Tests;
 
@@ -19,12 +19,14 @@ public class ComposedTripleStoreTests
         // Add code that runs before each test method
         _fixture = new Fixture();
     }
+
     [Test]
     public void TestCanCreateEmptyStore()
     {
         var sut = new ComposedTripleStore();
         sut.Should().NotBeNull();
     }
+
     [Test]
     public void TestCanAddATriple()
     {
