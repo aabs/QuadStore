@@ -6,6 +6,17 @@ using TripleStore.Core;
 namespace TripleStore.Tests;
 
 [TestFixture]
+public class QuadrupleTests
+{
+    [Test]
+    public void CanCreateQuadruple()
+    {
+        var sut = new Quadruple<short>(1, 2, 3, 4);
+        sut.Should().NotBeNull();
+    }
+}
+
+[TestFixture]
 public class UriRegistryTests
 {
     [Test]

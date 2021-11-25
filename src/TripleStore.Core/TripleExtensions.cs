@@ -1,4 +1,6 @@
-﻿namespace TripleStore.Core;
+﻿using System.Runtime.InteropServices;
+
+namespace TripleStore.Core;
 
 public static class TripleExtensions
 {
@@ -81,4 +83,11 @@ public static class UriHelpers
         if (Uri.TryCreate(s, UriKind.Absolute, out Uri result)) return result;
         throw new FormatException("Invalid URI format");
     }
+}
+
+public static class MarshallingHelpers
+{
+    public static int SizeOf<T>()
+    => Marshal.SizeOf<T>();
+
 }

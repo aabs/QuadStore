@@ -1,23 +1,45 @@
 ﻿namespace TripleStore.Core;
 
-public class IriID
+/// <summary>
+///     A wrapper to facilitate avoiding primitive obsessions
+/// </summary>
+/// <typeparam name="T">The primitive type to be wrapped</typeparam>
+public class Wrapper<T>
 {
-    private readonly uint _id;
-    public uint Prefix { get => _id >> 16; }
-    public uint Suffix { get => _id & 0xFFFF; }
+    protected readonly T _value;
+    private Wrapper() { }
 
-    public IriID(ushort prefix, ushort fragment)
+    public Wrapper(T t)
     {
-        var x = prefix << 16;
-        x |= fragment;
-        _id = (uint)((prefix << 16) | fragment);
+        _value = t;
     }
 
-    public IriID(uint id)
+    public T Value => _value;
+}
+
+public class IriID : Wrapper<ulong>
+{
+    public IriID(ulong u) : base(u) { }
+
+    public IriID(uint prefix, uint fragment) : this((prefix << MarshallingHelpers.SizeOf<uint>()) | fragment)
     {
-        _id = id;
     }
+
+    public uint Prefix => (uint)(_value >> MarshallingHelpers.SizeOf<uint>());
+    public uint Suffix => (uint)(_value & 0xFFFFFFFF);
 
     // generate hashcode
-    public override int GetHashCode() => _id.GetHashCode();
+    public override int GetHashCode()
+    {
+        return _value.GetHashCode();
+    }
+    public static implicit operator ulong(IriID value)
+    {
+        return value.Value;
+    }
+
+    public static implicit operator IriID(ulong value)
+    {
+        return new IriID(value);
+    }
 }

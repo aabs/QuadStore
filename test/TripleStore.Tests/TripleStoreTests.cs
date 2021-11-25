@@ -11,7 +11,7 @@ namespace TripleStore.Tests;
 [TestFixture]
 public class TripleStoreTests
 {
-    private Fixture _fixture;
+    private Fixture _fixture = new();
 
     [SetUp]
     public void SetUp()
