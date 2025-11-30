@@ -4,7 +4,7 @@ namespace TripleStore.Core;
 
 public class Quadruple<TBaseNumberType> where TBaseNumberType : unmanaged
 {
-    private static MultipartUriRegistry EffectiveIndex { get => RdfCompressionContext.Instance.UriRegistry; }
+    private static UriRegistry EffectiveIndex { get => RdfCompressionContext.Instance.UriRegistry; }
 
     public Quadruple(TBaseNumberType g,
                      TBaseNumberType s,
