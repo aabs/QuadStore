@@ -59,6 +59,7 @@ Development tips to minimize failures
 - Prefer using existing registries (`ItemRegistry<T>`, `UriRegistry`, `MultipartUriRegistry`) and helpers (`IdUtilities`) rather than introducing new ones.
 - Follow nullability settings per project: `TripleStore.Core` has nullable disabled; tests have it enabled.
 - Avoid adding new package dependencies unless necessary.
+- Generate both Positive and Negative Unit tests, aiming to provide 100% code coverage and to explore every corner case of the code under test.
 
 How to work efficiently in this repo
 - For core logic: edit files under `src/TripleStore.Core/` and add/adjust tests under `test/TripleStore.Tests/`.
