@@ -119,7 +119,7 @@ public class TripleTests
     }
 
     [Fact]
-    public void SettingNullUris_ShouldThrowNullReferenceException()
+    public void SettingNullUris_ShouldThrowArgumentNullException()
     {
         // Arrange
         var triple = new Triple(new Uri("http://example.org/s/" + Guid.NewGuid()),
@@ -127,9 +127,9 @@ public class TripleTests
                                 new Uri("http://example.org/o/" + Guid.NewGuid()));
 
         // Act / Assert
-        Assert.Throws<NullReferenceException>(() => triple.Subject = null!);
-        Assert.Throws<NullReferenceException>(() => triple.Predicate = null!);
-        Assert.Throws<NullReferenceException>(() => triple.Object = null!);
+        Assert.Throws<ArgumentNullException>(() => triple.Subject = null!);
+        Assert.Throws<ArgumentNullException>(() => triple.Predicate = null!);
+        Assert.Throws<ArgumentNullException>(() => triple.Object = null!);
     }
 
     [Fact]
@@ -184,25 +184,25 @@ public class TripleTests
     [Fact]
     public void Ctor_NullSubject_ShouldThrow()
     {
-        Assert.Throws<NullReferenceException>(() => new Triple(null!, new Uri("http://example.org/p"), new Uri("http://example.org/o")));
+        Assert.Throws<ArgumentNullException>(() => new Triple(null!, new Uri("http://example.org/p"), new Uri("http://example.org/o")));
     }
 
     [Fact]
     public void Ctor_NullPredicate_ShouldThrow()
     {
-        Assert.Throws<NullReferenceException>(() => new Triple(new Uri("http://example.org/s"), null!, new Uri("http://example.org/o")));
+        Assert.Throws<ArgumentNullException>(() => new Triple(new Uri("http://example.org/s"), null!, new Uri("http://example.org/o")));
     }
 
     [Fact]
     public void Ctor_NullObject_ShouldThrow()
     {
-        Assert.Throws<NullReferenceException>(() => new Triple(new Uri("http://example.org/s"), new Uri("http://example.org/p"), null!));
+        Assert.Throws<ArgumentNullException>(() => new Triple(new Uri("http://example.org/s"), new Uri("http://example.org/p"), null!));
     }
 
     [Fact]
     public void Ctor_AllNulls_ShouldThrow()
     {
-        Assert.Throws<NullReferenceException>(() => new Triple(null!, null!, null!));
+        Assert.Throws<ArgumentNullException>(() => new Triple(null!, null!, null!));
     }
 
     [Fact]
@@ -254,14 +254,17 @@ public class TripleTests
     public async Task Registry_ConcurrentAddSameUri_ShouldYieldSingleOrdinal()
     {
         var sharedUri = new Uri("http://example.org/concurrent/" + Guid.NewGuid());
-        var ordinals = new List<int>();
+        var ordinals = new ConcurrentQueue<int>();
         var tasks = Enumerable.Range(0, 10).Select(_ => Task.Run(() =>
         {
             var t = new Triple(sharedUri, new Uri("http://example.org/p/" + Guid.NewGuid()), new Uri("http://example.org/o/" + Guid.NewGuid()));
-            lock (ordinals) ordinals.Add(t.SubjOrd);
+            ordinals.Enqueue(t.SubjOrd);
         }));
         await Task.WhenAll(tasks);
-        ordinals.Should().AllBeEquivalentTo(ordinals[0]); // all same
+        if(ordinals.TryDequeue(out var ordinal))
+        {
+            ordinals.Should().AllBeEquivalentTo(ordinal); // all same
+        }
     }
 
     [Fact]

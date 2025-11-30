@@ -1,24 +1,24 @@
-﻿namespace TripleStore.Core;
+﻿using System.Collections.Concurrent;
+
+namespace TripleStore.Core;
 
 public class ItemRegistry<T>
 {
     private int ItemId = -1;
 
-    private readonly Dictionary<int, T> forwardLUT = new();
-    private readonly Dictionary<int, int> reverseLUT = new(); // reverse lookup from URI hashcode to ID
+    private readonly ConcurrentDictionary<int, T> forwardLUT = new();
+    // Map item hash code to assigned ID so items with identical hash share the same ID
+    private readonly ConcurrentDictionary<int, int> reverseLUT = new();
 
     public int Add(T t)
     {
-        var hashcode = t.GetHashCode();
-        if (reverseLUT.ContainsKey(hashcode))
-        {
-            return reverseLUT[hashcode];
-        }
-
-        var val = Interlocked.Increment(ref ItemId);
-        reverseLUT[hashcode] = val;
-        forwardLUT[val] = t;
-        return val;
+        ArgumentNullException.ThrowIfNull(t);
+        var hash = t.GetHashCode();
+        // Atomically assign an ID for the hash code if it doesn't exist
+        var id = reverseLUT.GetOrAdd(hash, _ => Interlocked.Increment(ref ItemId));
+        // Store the first seen item for this id; subsequent items with same hash keep the original
+        forwardLUT.TryAdd(id, t);
+        return id;
     }
 
     public T Lookup(int i)
@@ -28,10 +28,10 @@ public class ItemRegistry<T>
 
     public int Get(T t)
     {
-        var hashCode = t.GetHashCode();
-        if (reverseLUT.ContainsKey(hashCode))
+        var hash = t?.GetHashCode() ?? 0;
+        if (reverseLUT.TryGetValue(hash, out var id))
         {
-            return reverseLUT[hashCode];
+            return id;
         }
         throw new ApplicationException("not recognised");
     }

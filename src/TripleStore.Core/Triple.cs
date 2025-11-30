@@ -6,9 +6,9 @@ public record struct Triple
 
     public Triple(Uri subject, Uri predicate, Uri @object)
     {
-        Subject = subject;
-        Predicate = predicate;
-        Object = @object;
+        Subject = subject ?? throw new ArgumentNullException(nameof(subject));
+        Predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));
+        Object = @object ?? throw new ArgumentNullException(nameof(@object));
     }
 
     public Triple(int s, int p, int o)
