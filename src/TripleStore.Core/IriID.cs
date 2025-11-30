@@ -1,45 +1,18 @@
-﻿namespace TripleStore.Core;
+﻿using Vogen;
 
-/// <summary>
-///     A wrapper to facilitate avoiding primitive obsessions
-/// </summary>
-/// <typeparam name="T">The primitive type to be wrapped</typeparam>
-public class Wrapper<T>
+namespace TripleStore.Core;
+
+[ValueObject<ulong>]
+public partial struct IriID
+{ }
+
+public static class IriIDExtensions
 {
-    protected readonly T _value;
-    private Wrapper() { }
-
-    public Wrapper(T t)
+    extension(IriID id)
     {
-        _value = t;
-    }
-
-    public T Value => _value;
-}
-
-public class IriID : Wrapper<ulong>
-{
-    public IriID(ulong u) : base(u) { }
-
-    public IriID(uint prefix, uint fragment) : this((prefix << MarshallingHelpers.SizeOf<uint>()) | fragment)
-    {
-    }
-
-    public uint Prefix => (uint)(_value >> MarshallingHelpers.SizeOf<uint>());
-    public uint Suffix => (uint)(_value & 0xFFFFFFFF);
-
-    // generate hashcode
-    public override int GetHashCode()
-    {
-        return _value.GetHashCode();
-    }
-    public static implicit operator ulong(IriID value)
-    {
-        return value.Value;
-    }
-
-    public static implicit operator IriID(ulong value)
-    {
-        return new IriID(value);
+        // create an IriID from prefix and suffix using the vogen From method
+        public static IriID From(uint prefix, uint suffix) => IriID.From((prefix << MarshallingHelpers.SizeOf<uint>()) | suffix);
+        public uint Prefix => (uint)(id.Value >> MarshallingHelpers.SizeOf<uint>());
+        public uint Suffix => (uint)(id.Value & 0xFFFFFFFF);
     }
 }

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.3.11222.16 d18.3
+VisualStudioVersion = 18.3.11222.16
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TripleStore.Core", "src\TripleStore.Core\TripleStore.Core.csproj", "{067BE2C7-27CF-41F5-9406-0457CC50D30B}"
 EndProject
@@ -10,6 +10,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{DB5EDCF4-FE75-461F-8F89-3C344EA66154}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TripleStore.Storage", "src\TripleStore.Storage\TripleStore.Storage.csproj", "{9CE06C57-588F-48BB-850C-866C44C27C13}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Src", "Src", "{74CA7E3C-32C1-46DE-8F0C-DDD263815006}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{A2519C6C-9B49-4C91-A0B9-2666F02F742C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,6 +36,11 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{067BE2C7-27CF-41F5-9406-0457CC50D30B} = {74CA7E3C-32C1-46DE-8F0C-DDD263815006}
+		{F1A83593-6BD4-45EC-8012-64B6AC623FCE} = {A2519C6C-9B49-4C91-A0B9-2666F02F742C}
+		{9CE06C57-588F-48BB-850C-866C44C27C13} = {74CA7E3C-32C1-46DE-8F0C-DDD263815006}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1437EF56-6074-4158-A149-08A9E05708BE}

@@ -66,7 +66,7 @@ public class ComposedTripleStore : ITripleStore, IEnumerable<Triple>
     public struct Enumerator
     {
         private readonly IEnumerator<Triple> _store;
-        private readonly Triple _current;
+        private readonly Triple? _current;
         private readonly ComposedTripleStore ctStore;
 
         internal Enumerator(ComposedTripleStore store)

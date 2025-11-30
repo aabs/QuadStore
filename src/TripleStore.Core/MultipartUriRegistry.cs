@@ -18,7 +18,7 @@ public class MultipartUriRegistry
         {
             suffId = (ushort)_suffixRegistry.Add(suffix);
         }
-        return new IriID(prefId, suffId);
+        return IriID.From(prefId, suffId);
     }
 
     public Uri Lookup(IriID i)
@@ -37,6 +37,6 @@ public class MultipartUriRegistry
         (var p, var s) = t.SplitForIndexing();
         var pid = _prefixRegistry.Get(p);
         var sid = _suffixRegistry.Get(s);
-        return new IriID((ushort)pid, (ushort)sid);
+        return IriID.From((ushort)pid, (ushort)sid);
     }
 }
