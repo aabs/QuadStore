@@ -1,16 +1,15 @@
 ﻿using System;
 using FluentAssertions;
-using NUnit.Framework;
+using Xunit;
 
 
 namespace TripleStore.Tests;
 
-[TestFixture]
 public class Experiments
 {
 
 
-    [Test]
+    [Fact]
     public void MemoryOverArrayOfBytesTest()
     {
         var buf = new byte[1024];

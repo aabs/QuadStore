@@ -1,14 +1,13 @@
 ﻿using System;
 using FluentAssertions;
-using NUnit.Framework;
+using Xunit;
 using TripleStore.Core;
 
 namespace TripleStore.Tests;
 
-[TestFixture]
 public class QuadrupleTests
 {
-    [Test]
+    [Fact]
     public void CanCreateQuadruple()
     {
         var sut = new Quadruple<short>(1, 2, 3, 4);
@@ -16,17 +15,16 @@ public class QuadrupleTests
     }
 }
 
-[TestFixture]
 public class UriRegistryTests
 {
-    [Test]
+    [Fact]
     public void TestCanCreateRegistry()
     {
         var sut = new UriRegistry();
         sut.Should().NotBeNull();
     }
 
-    [Test]
+    [Fact]
     public void TestCanRegisterUri()
     {
         var sut = new UriRegistry();
@@ -36,7 +34,7 @@ public class UriRegistryTests
         id2.Should().Be(1);
     }
 
-    [Test]
+    [Fact]
     public void TestCanLookupRegisteredUris()
     {
         var sut = new UriRegistry();
@@ -49,17 +47,16 @@ public class UriRegistryTests
     }
 }
 
-[TestFixture]
 public class MultipartUriRegistryTests
 {
-    [Test]
+    [Fact]
     public void TestCanCreateRegistry()
     {
         var sut = new MultipartUriRegistry();
         sut.Should().NotBeNull();
     }
 
-    [Test]
+    [Fact]
     public void TestCanRegisterUri()
     {
         var sut = new MultipartUriRegistry();
@@ -71,7 +68,7 @@ public class MultipartUriRegistryTests
         id2.Suffix.Should().Be(1);
     }
 
-    [Test]
+    [Fact]
     public void TestCanLookupRegisteredUris()
     {
         var sut = new MultipartUriRegistry();

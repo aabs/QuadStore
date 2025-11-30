@@ -3,31 +3,28 @@ using System.Diagnostics;
 using System.Linq;
 using AutoFixture;
 using FluentAssertions;
-using NUnit.Framework;
+using Xunit;
 using TripleStore.Core;
 
 namespace TripleStore.Tests;
 
-[TestFixture]
 public class ComposedTripleStoreTests
 {
     private Fixture _fixture;
 
-    [SetUp]
-    public void SetUp()
+    public ComposedTripleStoreTests()
     {
-        // Add code that runs before each test method
         _fixture = new Fixture();
     }
 
-    [Test]
+    [Fact]
     public void TestCanCreateEmptyStore()
     {
         var sut = new ComposedTripleStore();
         sut.Should().NotBeNull();
     }
 
-    [Test]
+    [Fact]
     public void TestCanAddATriple()
     {
         var sut = new ComposedTripleStore();
@@ -35,7 +32,7 @@ public class ComposedTripleStoreTests
         ord.Should().Be(0);
     }
 
-    [Test]
+    [Fact]
     public void TestCanAddATripleAndGetBackViaRandomAccess()
     {
         var sut = new ComposedTripleStore();
@@ -45,7 +42,7 @@ public class ComposedTripleStoreTests
         t.Should().Be(t2);
     }
 
-    [Test]
+    [Fact]
     public void TestCanAddATripleAndGetBackViaRandomAccessOnLargeList()
     {
         var sut = new ComposedTripleStore();

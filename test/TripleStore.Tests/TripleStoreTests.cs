@@ -3,31 +3,28 @@ using System.Diagnostics;
 using System.Linq;
 using AutoFixture;
 using FluentAssertions;
-using NUnit.Framework;
+using Xunit;
 using TripleStore.Core;
 
 namespace TripleStore.Tests;
 
-[TestFixture]
 public class TripleStoreTests
 {
     private Fixture _fixture = new();
 
-    [SetUp]
-    public void SetUp()
+    public TripleStoreTests()
     {
-        // Add code that runs before each test method
         _fixture = new Fixture();
     }
 
-    [Test]
+    [Fact]
     public void TestCanCreateTripleStore()
     {
         var sut = new TripleCollection();
         sut.Should().NotBeNull();
     }
 
-    [Test]
+    [Fact]
     public void TestCanCreateTriple()
     {
         var sut = new TripleCollection();
@@ -41,7 +38,7 @@ public class TripleStoreTests
         t.Object.Should().Be(o);
     }
 
-    [Test]
+    [Fact]
     public void TestCanStoreTriple()
     {
         var sut = new TripleCollection();
@@ -52,7 +49,7 @@ public class TripleStoreTests
         sut.InsertTriple(t);
     }
 
-    [Test]
+    [Fact]
     public void TestCanRetrieveTriple()
     {
         var sut = new TripleCollection();
@@ -68,7 +65,7 @@ public class TripleStoreTests
         t2.Object.Should().Be(o);
     }
 
-    [Test]
+    [Fact]
     public void TestCanStoreAndRetrieveManyTriples()
     {
         var sut = new TripleCollection();
@@ -87,7 +84,7 @@ public class TripleStoreTests
         t2.Object.Should().Be(new Uri($"urn:502"));
     }
 
-    [Test]
+    [Fact]
     public void TestCanStoreAndEnumerateManyTriples()
     {
         var sut = new TripleCollection();
@@ -111,7 +108,7 @@ public class TripleStoreTests
         }
     }
 
-    [Test]
+    [Fact]
     public void TestCanStoreAndEnumerateManyCommonTriples()
     {
         Uri pred = new Uri($"urn:common-predicate");
@@ -137,7 +134,7 @@ public class TripleStoreTests
         }
     }
 
-    [Test]
+    [Fact]
     public void TestCanRetrieveByMatching()
     {
         var sut = new TripleCollection();
@@ -157,7 +154,7 @@ public class TripleStoreTests
         results.Count().Should().Be(100);
     }
 
-    [Test]
+    [Fact]
     public void TestCanRetrieveByMatching2()
     {
         var sut = new TripleCollection();
@@ -179,7 +176,7 @@ public class TripleStoreTests
         results.First().Object.Should().Be(o);
     }
 
-    [Test]
+    [Fact]
     public void TestCanJoinUsingMultipleWheres()
     {
         var sut = new TripleCollection();
