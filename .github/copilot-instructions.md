@@ -39,6 +39,32 @@ Always use a recent .NET SDK that supports `net10.0`.
 - There is no runnable app; validation is via unit tests.
 - Lint/format: none enforced. Keep style consistent with existing files (implicit usings on; nullable varies per project).
 
+Test-Driven Development - MANDATORY
+
+**NEVER write production code before writing a failing test.**
+
+### The Cycle (No Exceptions)
+
+1. **RED Phase:** Write a failing test
+   - Write test cases BEFORE any implementation
+   - Ensure tests fail for the right reasons
+   - Cover edge cases, boundary conditions, error scenarios
+2. **GREEN Phase:** Write minimal code to pass
+   - Implement ONLY what's needed to pass tests
+   - No premature optimization
+   - Keep implementation simple and clear
+3. **REFACTOR Phase:** Improve code quality
+   - Maintain 100% test pass rate during refactoring
+   - Apply SOLID principles
+   - Ensure type hints are complete
+
+### Coverage Requirements (Gates)
+
+- **Minimum:** 80% code coverage for all modules
+- **Target:** 85%+ overall
+- **Critical paths** (auth, API calls): 100% coverage
+- **100% test pass rate** required before ANY commits
+
 Notes and gotchas observed while validating
 - Projects target `net10.0`. Ensure your SDK supports it; otherwise you will see target framework errors. Upgrading/downgrading TFMs is out-of-scope for normal changes.
 - Source generators: `Vogen` is used in `TripleStore.Core`. No extra steps; standard `dotnet build/test` will run generators.

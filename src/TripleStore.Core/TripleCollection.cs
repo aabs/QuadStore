@@ -14,22 +14,26 @@ public class TripleCollection : SuperStore, ITripleStore, IEnumerable<Triple>, I
     {
         lock (_lock)
         {
+            // if we can't find the triple, add it
             if (!_tripleMap.ContainsKey(t.GetHashCode()))
             {
                 int destinationIndex;
+                // perform a capacity check.  If out of space, resize
                 if (3 * nextIndex >= triples.Length)
                 {
                     Resize(ref triples, triples.Length + ArraySizeIncrement);
                 }
                 destinationIndex = nextIndex++;
+                // get the triple's ID values
                 var tt = t.Get();
-
+                // and store them
                 triples[destinationIndex, 0] = tt.Item1;
                 triples[destinationIndex, 1] = tt.Item2;
                 triples[destinationIndex, 2] = tt.Item3;
                 _tripleMap[t.GetHashCode()] = destinationIndex;
                 return destinationIndex;
             }
+            // if we can, return the existing index
             return _tripleMap[t.GetHashCode()];
         }
     }
