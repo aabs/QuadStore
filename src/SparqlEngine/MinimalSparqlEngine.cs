@@ -40,11 +40,51 @@ public sealed class MinimalSparqlEngine
         var results = new List<Dictionary<string, string>>();
 
         // Helper to convert a TriplePattern into (s,p,o)
-        static (string? s, string? p, string? o) ToSPO(TriplePattern tp)
+        (string? s, string? p, string? o) ToSPO(TriplePattern tp)
         {
             string? s = tp.Subject is NodeMatchPattern smp && smp.Node is VDS.RDF.UriNode su ? su.Uri.AbsoluteUri : null;
             string? p = tp.Predicate is NodeMatchPattern pmp && pmp.Node is VDS.RDF.UriNode pu ? pu.Uri.AbsoluteUri : null;
             string? o = tp.Object is NodeMatchPattern omp && omp.Node is VDS.RDF.UriNode ou ? ou.Uri.AbsoluteUri : null;
+
+            // Fallback: resolve QNames using the query namespace map when dotNetRDF hasn't materialized as UriNode
+            static string? ResolveQName(string? val, SparqlQuery q)
+            {
+                if (string.IsNullOrEmpty(val)) return val;
+                if (val.StartsWith("<") && val.EndsWith(">")) return val.Trim('<','>');
+                if (Uri.IsWellFormedUriString(val, UriKind.Absolute)) return val;
+                // Ignore variable and node debug formats
+                if (val.StartsWith("?") || val.StartsWith("[")) return null;
+                var idx = val.IndexOf(':');
+                if (idx > 0)
+                {
+                    var prefix = val.Substring(0, idx);
+                    var local = val.Substring(idx + 1);
+                    var ns = q.NamespaceMap.GetNamespaceUri(prefix);
+                    if (ns != null)
+                    {
+                        return new Uri(ns, local).AbsoluteUri;
+                    }
+                }
+                return null;
+            }
+
+            // Try ToString fallback when nulls
+            if (s is null)
+            {
+                var st = tp.Subject?.ToString();
+                s = ResolveQName(st, q);
+            }
+            if (p is null)
+            {
+                var pt = tp.Predicate?.ToString();
+                p = ResolveQName(pt, q);
+            }
+            if (o is null)
+            {
+                var ot = tp.Object?.ToString();
+                o = ResolveQName(ot, q);
+            }
+
             return (s, p, o);
         }
 
@@ -129,11 +169,39 @@ public sealed class MinimalSparqlEngine
 
     private static IEnumerable<(string subject, string predicate, string obj, string graph)> QueryDual(QuadStore store, string? s, string? p, string? o, string? g = null)
     {
-        string? alt(string? v) => v is null ? null : (v.StartsWith("<") && v.EndsWith(">") ? v.Trim('<','>') : $"<{v}>");
-        var aS = alt(s); var aP = alt(p); var aO = alt(o); var aG = alt(g);
-        var r1 = store.Query(subject: s, predicate: p, obj: o, graph: g);
-        var r2 = store.Query(subject: aS, predicate: aP, obj: aO, graph: aG);
-        return r1.Concat(r2).Distinct();
+        static IEnumerable<string?> Variants(string? v)
+        {
+            if (v is null) return new string?[] { null };
+            // For literals and blank nodes, do not generate angle-bracket variants
+            if (v.StartsWith("\"") || v.StartsWith("_:")) return new[] { v };
+            if (v.StartsWith("<") && v.EndsWith(">"))
+            {
+                var raw = v.Trim('<','>');
+                return new[] { v, raw };
+            }
+            else
+            {
+                return new[] { v, $"<{v}>" };
+            }
+        }
+
+        var sVars = Variants(s);
+        var pVars = Variants(p);
+        var oVars = Variants(o);
+        var gVars = Variants(g);
+
+        var seen = new HashSet<(string subject, string predicate, string obj, string graph)>();
+        foreach (var sv in sVars)
+        foreach (var pv in pVars)
+        foreach (var ov in oVars)
+        foreach (var gv in gVars)
+        {
+            foreach (var row in store.Query(subject: sv, predicate: pv, obj: ov, graph: gv))
+            {
+                if (seen.Add(row))
+                    yield return row;
+            }
+        }
     }
 
     /// <summary>

@@ -421,6 +421,8 @@ public sealed class EncodedColumn : IDisposable
             // Reopen mapping after truncation
             _mmf = MemoryMappedFile.CreateFromFile(fs, null, fs.Length, MemoryMappedFileAccess.ReadWrite, HandleInheritability.None, false);
             _accessor = _mmf.CreateViewAccessor(0, fs.Length, MemoryMappedFileAccess.ReadWrite);
+            // CRITICAL: Update capacity to match the new mapping size to allow subsequent appends
+            _capacity = _length;
         }
     }
 
