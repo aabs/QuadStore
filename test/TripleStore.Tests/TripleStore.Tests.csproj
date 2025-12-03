@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TripleStore.Core\TripleStore.Core.csproj" />
+    <ProjectReference Include="..\..\src\SparqlEngine\SparqlEngine.csproj" />
   </ItemGroup>
 
   <ItemGroup>
