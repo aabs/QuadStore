@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.14.0" />
+    <PackageReference Include="Roaring.Net" Version="1.0.0" />
+  </ItemGroup>
+
+  <!-- Use absolute DLL references so BenchmarkDotNet's copy/build step can resolve them -->
+  <ItemGroup>
+    <Reference Include="TripleStore.Core">
+      <HintPath>D:\dev\aabs\5th-related\triple_store\src\TripleStore.Core\bin\Release\net10.0\TripleStore.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="SparqlEngine">
+      <HintPath>D:\dev\aabs\5th-related\triple_store\src\SparqlEngine\bin\Release\net10.0\SparqlEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="Roaring.Net">
+      <HintPath>D:\dev\aabs\5th-related\triple_store\src\TripleStore.Core\bin\Release\net10.0\Roaring.Net.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

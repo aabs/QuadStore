@@ -16,6 +16,7 @@ namespace TripleStore.Benchmarks;
 public class PersistenceBenchmarks
 {
     private string _tempDir = null!;
+    private string _workDir = null!;
     private QuadStore _store = null!;
 
     [Params(10_000, 100_000, 1_000_000)]
@@ -31,7 +32,9 @@ public class PersistenceBenchmarks
     [IterationSetup]
     public void IterationSetup()
     {
-        _store = new QuadStore(_tempDir);
+        _workDir = Path.Combine(_tempDir, $"iter_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_workDir);
+        _store = new QuadStore(_workDir);
         
         // Pre-load data for save benchmarks
         for (int i = 0; i < DatasetSize; i++)
@@ -50,11 +53,19 @@ public class PersistenceBenchmarks
     {
         _store.Dispose();
         
-        // Clean up files between iterations
-        foreach (var file in Directory.GetFiles(_tempDir))
+        // Clean up iteration directory; ignore file-in-use errors
+        try
         {
-            File.Delete(file);
+            if (Directory.Exists(_workDir))
+            {
+                foreach (var file in Directory.GetFiles(_workDir))
+                {
+                    try { File.Delete(file); } catch { /* ignore */ }
+                }
+                Directory.Delete(_workDir, true);
+            }
         }
+        catch { /* ignore */ }
     }
 
     [GlobalCleanup]
@@ -81,7 +92,7 @@ public class PersistenceBenchmarks
     {
         _store.SaveAll();
         _store.Dispose();
-        _store = new QuadStore(_tempDir);
+        _store = new QuadStore(_workDir);
         _store.LoadAll();
     }
 
@@ -93,7 +104,8 @@ public class PersistenceBenchmarks
         _store.Dispose();
         
         // Measure load time
-        _store = new QuadStore(_tempDir);
+        _store = new QuadStore(_workDir);
+        _store.LoadAll();
     }
 
     [Benchmark]

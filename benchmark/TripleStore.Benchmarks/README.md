@@ -93,7 +93,7 @@ End-to-end industrial workload simulations:
 
 ### Run All Benchmarks
 ```powershell
-cd benchmark\TripleStore.Benchmarks
+cd test\benchmark\TripleStore.Benchmarks
 dotnet run -c Release
 ```
 
