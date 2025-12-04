@@ -94,62 +94,130 @@ public sealed class QuadStore : IDisposable
 
     /// <summary>
     /// Query by equality filters. Any combination of subject, predicate, object, graph may be provided.
+    /// Uses native Roaring bitmap intersections for efficient multi-field queries.
     /// </summary>
     public IEnumerable<(string subject, string predicate, string obj, string graph)> Query(string? subject = null, string? predicate = null, string? obj = null, string? graph = null)
     {
         _lock.EnterReadLock();
         try
         {
-            IEnumerable<long>? candidate = null;
+            //Collect all filter bitmaps without mutating them
+            var filterBitmaps = new List<Roaring32Bitmap>();
 
-            if (subject is not null && _encoder.TryGet(subject, out var sid))
-                candidate = _idxS.GetRows(sid);
-            else if (subject is not null)
-                yield break;
+            // Subject filter
+            if (subject is not null)
+            {
+                if (!_encoder.TryGet(subject, out var sid))
+                    yield break;
+                var sBitmap = _idxS.GetBitmap(sid);
+                if (sBitmap == null || sBitmap.Count == 0)
+                    yield break;
+                filterBitmaps.Add(sBitmap);
+            }
 
-            if (predicate is not null && _encoder.TryGet(predicate, out var pid))
-                candidate = Intersect(candidate, _idxP.GetRows(pid));
-            else if (predicate is not null)
-                yield break;
+            // Predicate filter
+            if (predicate is not null)
+            {
+                if (!_encoder.TryGet(predicate, out var pid))
+                    yield break;
+                var pBitmap = _idxP.GetBitmap(pid);
+                if (pBitmap == null || pBitmap.Count == 0)
+                    yield break;
+                filterBitmaps.Add(pBitmap);
+            }
 
-            if (obj is not null && _encoder.TryGet(obj, out var oid))
-                candidate = Intersect(candidate, _idxO.GetRows(oid));
-            else if (obj is not null)
-                yield break;
+            // Object filter
+            if (obj is not null)
+            {
+                if (!_encoder.TryGet(obj, out var oid))
+                    yield break;
+                var oBitmap = _idxO.GetBitmap(oid);
+                if (oBitmap == null || oBitmap.Count == 0)
+                    yield break;
+                filterBitmaps.Add(oBitmap);
+            }
 
-            if (graph is not null && _encoder.TryGet(graph, out var gid))
-                candidate = Intersect(candidate, _idxG.GetRows(gid));
-            else if (graph is not null)
-                yield break;
+            // Graph filter
+            if (graph is not null)
+            {
+                if (!_encoder.TryGet(graph, out var gid))
+                    yield break;
+                var gBitmap = _idxG.GetBitmap(gid);
+                if (gBitmap == null || gBitmap.Count == 0)
+                    yield break;
+                filterBitmaps.Add(gBitmap);
+            }
 
-            IEnumerable<long> rows = candidate ?? Enumerable.Range(0, (int)_rowCount).Select(i => (long)i);
+            // Compute intersection
+            IEnumerable<long> rows;
+            if (filterBitmaps.Count == 0)
+            {
+                // No filters - enumerate all rows
+                rows = Enumerable.Range(0, (int)_rowCount).Select(i => (long)i);
+            }
+            else if (filterBitmaps.Count == 1)
+            {
+                // Single filter - just convert to array
+                rows = filterBitmaps[0].ToArray().Select(x => (long)x);
+            }
+            else
+            {
+                // Multiple filters - intersect sorted arrays via two-pointer scan for performance
+                // Convert to sorted arrays (Roaring already provides ordered iteration)
+                var arrays = filterBitmaps
+                    .Select(b => b.ToArray())
+                    .OrderBy(a => a.Length)
+                    .ToArray();
+
+                // Start with the smallest array as the working set
+                var work = arrays[0];
+                for (int i = 1; i < arrays.Length; i++)
+                {
+                    var next = arrays[i];
+                    // Two-pointer intersection into a temporary List<uint>
+                    var tmp = new List<uint>(Math.Min(work.Length, next.Length));
+                    int p = 0, q = 0;
+                    while (p < work.Length && q < next.Length)
+                    {
+                        var a = work[p];
+                        var b = next[q];
+                        if (a == b)
+                        {
+                            tmp.Add(a);
+                            p++; q++;
+                        }
+                        else if (a < b)
+                        {
+                            p++;
+                        }
+                        else
+                        {
+                            q++;
+                        }
+                    }
+                    if (tmp.Count == 0)
+                    {
+                        yield break;
+                    }
+                    work = tmp.ToArray();
+                }
+                rows = work.Select(x => (long)x);
+            }
+
+            // Materialize results
             foreach (var r in rows)
             {
                 int si = _s.Read(r);
                 int pi = _p.Read(r);
                 int oi = _o.Read(r);
                 int gi = _g.Read(r);
-                yield return (_encoder.GetString(si), _encoder.GetString(pi), _encoder.GetString(oi), _encoder.GetString(gi));
+                yield return (_encoder.GetString(si), _encoder.GetString(pi), 
+                             _encoder.GetString(oi), _encoder.GetString(gi));
             }
         }
         finally
         {
             _lock.ExitReadLock();
-        }
-    }
-
-    private static IEnumerable<long> Intersect(IEnumerable<long>? a, IEnumerable<long> b)
-    {
-        if (a is null)
-        {
-            foreach (var x in b) yield return x;
-            yield break;
-        }
-        // both are sorted sets in practice; use HashSet intersection for simplicity here
-        var hs = a is HashSet<long> ha ? ha : new HashSet<long>(a);
-        foreach (var x in b)
-        {
-            if (hs.Contains(x)) yield return x;
         }
     }
 
@@ -478,6 +546,15 @@ public sealed class BitmapIndex
             yield break;
         }
         yield break;
+    }
+
+    /// <summary>
+    /// Get the bitmap for a dictionary ID. Returns null if the ID doesn't exist.
+    /// Avoids array conversion for efficient native bitmap operations.
+    /// </summary>
+    public Roaring32Bitmap? GetBitmap(int dictId)
+    {
+        return _bitmaps.TryGetValue(dictId, out var bm) ? bm : null;
     }
 
     public void Save()
