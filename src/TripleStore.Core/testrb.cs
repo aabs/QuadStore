@@ -1,15 +1,6 @@
-﻿using System;
-using System.Buffers.Binary;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Collections.Concurrent;
 using System.IO.MemoryMappedFiles;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
-// Logging removed to avoid external package dependency. Hooks can be added via delegates if needed.
-using Roaring.Net;
 using Roaring.Net.CRoaring;
 
 namespace TripleStore.Core;
@@ -26,8 +17,6 @@ namespace TripleStore.Core;
 /// </summary>
 public sealed class QuadStore : IDisposable
 {
-    private const int DictFormatVersion = 1;
-    private const int ColumnRecordSize = sizeof(int);
     private const int InitialCapacity = 4096;
 
     private readonly string _root;
