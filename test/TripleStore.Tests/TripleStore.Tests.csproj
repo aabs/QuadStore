@@ -31,4 +31,14 @@
     <EditorConfigFiles Remove="C:\Dev\aabs\triple_store\test\TripleStore.Tests\.editorconfig" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="test-data\semopenalex-data-sample.trig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="test-data\semopenalex-data-sample.trig">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

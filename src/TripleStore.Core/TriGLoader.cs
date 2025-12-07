@@ -6,7 +6,8 @@ using VDS.RDF.Parsing;
 namespace TripleStore.Core;
 
 /// <summary>
-/// Loads TriG files into a QuadStore using dotNetRDF parsers.
+/// Loads TriG files directly into a QuadStore.
+/// Uses dotNetRDF's parser to load TriG and transfers data directly to QuadStore via streaming.
 /// </summary>
 public sealed class TriGLoader
 {
@@ -82,7 +83,7 @@ public sealed class TriGLoader
         var baseUri = new Uri("http://example.org/base/");
         parser.Load(tempStore, reader, baseUri);
 
-        // Transfer the loaded data to our QuadStore
+        // Transfer loaded data directly to QuadStore
         TransferToQuadStore(tempStore);
     }
 
@@ -114,6 +115,7 @@ public sealed class TriGLoader
 
     /// <summary>
     /// Transfers data from a dotNetRDF TripleStore to the QuadStore.
+    /// Processes graphs and triples sequentially to stream data directly to the target.
     /// </summary>
     /// <param name="source">The source TripleStore containing the loaded data.</param>
     private void TransferToQuadStore(VDS.RDF.TripleStore source)
@@ -132,7 +134,7 @@ public sealed class TriGLoader
                 graphName = FormatNode(graph.Name);
             }
 
-            // Transfer all triples from this graph
+            // Transfer all triples from this graph directly to QuadStore
             foreach (var triple in graph.Triples)
             {
                 _quadStore.Append(

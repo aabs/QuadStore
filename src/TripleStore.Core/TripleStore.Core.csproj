@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk" InitialTargets="GenerateParser">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,9 +8,45 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
     <PackageReference Include="dotNetRDF" Version="3.4.1" />
     <PackageReference Include="Roaring.Net" Version="1.0.0" />
     <PackageReference Include="Vogen" Version="8.0.3" />
   </ItemGroup>
+  <Target Name="GenerateParser">
+
+    <Message Text="Generating TriG Lexer" />
+    <Exec Command="java -jar ../../tools/antlr-4.13.2-complete.jar -Dlanguage=CSharp -o trig-grammar -Xexact-output-dir -lib . TrigLexer.g4" 
+          ConsoleToMsBuild="true" 
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ContinueOnError="false">
+      <Output TaskParameter="ConsoleOutput" PropertyName="TrigLexerOutput" />
+    </Exec>
+    <Message Text="Generating TriG Parser" />
+    <Exec Command="java -jar ../../tools/antlr-4.13.2-complete.jar -Dlanguage=CSharp -visitor -listener -o trig-grammar -Xexact-output-dir -lib trig-grammar TrigParser.g4" 
+          ConsoleToMsBuild="true" 
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ContinueOnError="false">
+      <Output TaskParameter="ConsoleOutput" PropertyName="TrigParserOutput" />
+    </Exec>
+
+    <Message Text="----------------------------------------" />
+    <Message Text="TriG Lexer Output: @(TrigLexerOutput)" />
+    <Message Text="TriG Parser Output: @(TrigParserOutput)" />
+    <Message Text="----------------------------------------" />
+  </Target>
+
+  <!-- Remove ANTLR transient artifacts on clean -->
+  <Target Name="CleanAntlrArtifacts" BeforeTargets="Clean">
+    <ItemGroup>
+      <AntlrArtifacts Include="$(MSBuildThisFileDirectory)grammar/*.tokens" />
+      <AntlrArtifacts Include="$(MSBuildThisFileDirectory)grammar/*.interp" />
+      <AntlrArtifacts Include="$(MSBuildThisFileDirectory)grammar/trig-grammar/*.tokens" />
+      <AntlrArtifacts Include="$(MSBuildThisFileDirectory)grammar/trig-grammar/*.interp" />
+      <AntlrArtifacts Include="$(MSBuildThisFileDirectory)grammar/sparql-grammar/*.tokens" />
+      <AntlrArtifacts Include="$(MSBuildThisFileDirectory)grammar/sparql-grammar/*.interp" />
+    </ItemGroup>
+    <Delete Files="@(AntlrArtifacts)" TreatErrorsAsWarnings="false" />
+  </Target>
 
 </Project>
