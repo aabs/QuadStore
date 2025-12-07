@@ -79,7 +79,7 @@ public class TriGLoaderBenchmarks
     {
         var storeDir = Path.Combine(_tempDir, $"store_{Guid.NewGuid():N}");
         using var store = new QuadStore(storeDir);
-        var loader = new TriGLoader(store);
+        var loader = new SinglePassTrigLoader(store);
         
         loader.LoadFromFile(_smallTrigFile);
         
@@ -91,7 +91,7 @@ public class TriGLoaderBenchmarks
     {
         var storeDir = Path.Combine(_tempDir, $"store_{Guid.NewGuid():N}");
         using var store = new QuadStore(storeDir);
-        var loader = new TriGLoader(store);
+        var loader = new SinglePassTrigLoader(store);
         
         loader.LoadFromFile(_mediumTrigFile);
         
@@ -103,7 +103,7 @@ public class TriGLoaderBenchmarks
     {
         var storeDir = Path.Combine(_tempDir, $"store_{Guid.NewGuid():N}");
         using var store = new QuadStore(storeDir);
-        var loader = new TriGLoader(store);
+        var loader = new SinglePassTrigLoader(store);
         
         loader.LoadFromFile(_largeTrigFile);
         
@@ -130,7 +130,7 @@ public class TriGLoaderBenchmarks
         
         var storeDir = Path.Combine(_tempDir, $"store_{Guid.NewGuid():N}");
         using var store = new QuadStore(storeDir);
-        var loader = new TriGLoader(store);
+        var loader = new SinglePassTrigLoader(store);
         
         loader.LoadFromString(trigContent);
         

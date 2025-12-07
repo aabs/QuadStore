@@ -352,3 +352,4 @@ src/TripleStore.Core/trig-grammar/TrigLexer.interp
 src/TripleStore.Core/trig-grammar/TrigLexer.tokens
 src/TripleStore.Core/trig-grammar/TrigParser.interp
 src/TripleStore.Core/trig-grammar/TrigParser.tokens
+benchmark_output.txt
