@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using FluentAssertions;
 using SparqlEngine;
@@ -48,7 +48,7 @@ public class RealisticSparqlTests
 
     private void LoadDataIntoStore(QuadStore store, string sampleTrigFilePath)
     {
-        var loader = new TriGLoader(store);
+        var loader = new SinglePassTrigLoader(store);
         // enumerate all embedded resources to find the correct name
         var resourceNames = GetType().Assembly.GetManifestResourceNames();
         foreach (var resourceName in resourceNames)

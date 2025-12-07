@@ -3,8 +3,6 @@ using System.IO;
 using System.Linq;
 using FluentAssertions;
 using TripleStore.Core;
-using VDS.RDF;
-using VDS.RDF.Parsing;
 using Xunit;
 
 namespace TripleStore.Tests;
@@ -24,7 +22,7 @@ public class TriGLoaderTests
     public void Constructor_WithNullQuadStore_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        Action act = () => new TriGLoader(null!);
+        Action act = () => new SinglePassTrigLoader(null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -39,7 +37,7 @@ public class TriGLoaderTests
         var quadStore = new QuadStore(dir);
 
         // Act
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Assert
         loader.Should().NotBeNull();
@@ -55,7 +53,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(null!);
@@ -71,7 +69,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -99,7 +97,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -135,7 +133,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -160,7 +158,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -188,7 +186,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -209,12 +207,12 @@ public class TriGLoaderTests
     }
 
     [Fact]
-    public void LoadFromString_WithInvalidTriG_ThrowsRdfParseException()
+    public void LoadFromString_WithInvalidTriG_ThrowsTrigParseException()
     {
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var invalidTrigContent = @"
             @prefix ex: <http://example.org/> .
@@ -228,7 +226,7 @@ public class TriGLoaderTests
         Action act = () => loader.LoadFromString(invalidTrigContent);
 
         // Assert
-        act.Should().Throw<RdfParseException>();
+        act.Should().Throw<TrigParseException>();
     }
 
     [Fact]
@@ -237,7 +235,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -267,7 +265,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -297,7 +295,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -325,7 +323,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @base <http://example.org/> .
@@ -351,7 +349,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -377,7 +375,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromFile(null!);
@@ -393,7 +391,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromFile("");
@@ -408,7 +406,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
         var nonExistentPath = Path.Combine(dir, "nonexistent.trig");
 
         // Act
@@ -424,7 +422,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
         
         var trigFilePath = Path.Combine(dir, "test.trig");
         var trigContent = @"
@@ -455,7 +453,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromStream(null!);
@@ -471,7 +469,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
         
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -500,7 +498,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromTextReader(null!);
@@ -516,7 +514,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
         
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -545,7 +543,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
         
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -574,7 +572,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         var count = loader.GetLoadedQuadCount();
@@ -593,7 +591,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -617,7 +615,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -643,7 +641,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent1 = @"
             @prefix ex: <http://example.org/> .
@@ -670,7 +668,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -695,7 +693,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -720,7 +718,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -749,7 +747,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -789,7 +787,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -826,7 +824,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -867,7 +865,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -921,7 +919,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .
@@ -947,7 +945,7 @@ public class TriGLoaderTests
         // Arrange
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         var trigContent = @"
             @prefix ex: <http://example.org/> .

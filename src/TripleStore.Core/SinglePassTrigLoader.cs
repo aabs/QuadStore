@@ -1,4 +1,5 @@
 using Antlr4.Runtime;
+using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 
 namespace TripleStore.Core;
@@ -76,10 +77,28 @@ public sealed class SinglePassTrigLoader
         var lexer = new TrigLexer(input);
         var tokens = new CommonTokenStream(lexer);
         var parser = new TrigParser(tokens);
-        
-        var trigDoc = parser.trigDoc();
-        var visitor = new TriGVisitorLoader(_quadStore);
-        visitor.Visit(trigDoc);
+
+        var errorListener = new ThrowingErrorListener();
+        lexer.RemoveErrorListeners();
+        parser.RemoveErrorListeners();
+        lexer.AddErrorListener(errorListener);
+        parser.AddErrorListener(errorListener);
+        parser.ErrorHandler = new BailErrorStrategy();
+
+        try
+        {
+            var trigDoc = parser.trigDoc();
+            var visitor = new TriGVisitorLoader(_quadStore);
+            visitor.Visit(trigDoc);
+        }
+        catch (TrigParseException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is RecognitionException || ex is ParseCanceledException)
+        {
+            throw new TrigParseException("Failed to parse TriG content.", ex);
+        }
     }
 
     /// <summary>
@@ -105,6 +124,25 @@ public sealed class SinglePassTrigLoader
     public int GetLoadedQuadCount()
     {
         return _quadStore.Query().Count();
+    }
+
+    private sealed class ThrowingErrorListener : IAntlrErrorListener<IToken>, IAntlrErrorListener<int>
+    {
+        public void SyntaxError(TextWriter output, IRecognizer recognizer, IToken offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
+        {
+            throw CreateException(line, charPositionInLine, msg, e);
+        }
+
+        public void SyntaxError(TextWriter output, IRecognizer recognizer, int offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
+        {
+            throw CreateException(line, charPositionInLine, msg, e);
+        }
+
+        private static TrigParseException CreateException(int line, int charPositionInLine, string msg, RecognitionException e)
+        {
+            var message = $"Syntax error at line {line}, position {charPositionInLine}: {msg}";
+            return new TrigParseException(message, e ?? new Exception(message));
+        }
     }
 
     /// <summary>
@@ -180,7 +218,18 @@ public sealed class SinglePassTrigLoader
 
         public override object? VisitBlock(TrigParser.BlockContext context)
         {
-            if (context.triplesOrGraph() != null)
+            if (context.GRAPH() != null)
+            {
+                var labelOrSubject = context.labelOrSubject();
+                var graphUri = ExtractIri(labelOrSubject);
+                var prevGraph = _currentGraph;
+                _currentGraph = graphUri;
+
+                Visit(context.wrappedGraph());
+
+                _currentGraph = prevGraph;
+            }
+            else if (context.triplesOrGraph() != null)
             {
                 Visit(context.triplesOrGraph());
             }
@@ -191,18 +240,6 @@ public sealed class SinglePassTrigLoader
             else if (context.triples2() != null)
             {
                 Visit(context.triples2());
-            }
-            else if (context.GRAPH() != null)
-            {
-                // GRAPH keyword: labelOrSubject wrappedGraph
-                var labelOrSubject = context.labelOrSubject();
-                var graphUri = ExtractIri(labelOrSubject);
-                var prevGraph = _currentGraph;
-                _currentGraph = graphUri;
-                
-                Visit(context.wrappedGraph());
-                
-                _currentGraph = prevGraph;
             }
 
             return null;
@@ -250,7 +287,6 @@ public sealed class SinglePassTrigLoader
 
         public override object? VisitTriplesBlock(TrigParser.TriplesBlockContext context)
         {
-            // Visit all triples in the block
             for (int i = 0; i < context.ChildCount; i++)
             {
                 var child = context.GetChild(i);
@@ -261,6 +297,10 @@ public sealed class SinglePassTrigLoader
                 else if (child is TrigParser.Triples2Context triples2Ctx)
                 {
                     Visit(triples2Ctx);
+                }
+                else if (child is TrigParser.TriplesBlockContext nestedBlock)
+                {
+                    Visit(nestedBlock);
                 }
             }
 
@@ -341,8 +381,8 @@ public sealed class SinglePassTrigLoader
         {
             if (context.iri() != null)
                 return ExtractIri(context.iri());
-            if (context.BlankNode() != null)
-                return ExtractBlankNodeTerminal(context.BlankNode());
+            if (context.blankNode() != null)
+                return ExtractBlankNode(context.blankNode());
             if (context.collection() != null)
                 return ProcessCollection(context.collection());
 
@@ -353,8 +393,8 @@ public sealed class SinglePassTrigLoader
         {
             if (context.iri() != null)
                 return ExtractIri(context.iri());
-            if (context.BlankNode() != null)
-                return ExtractBlankNodeTerminal(context.BlankNode());
+            if (context.blankNode() != null)
+                return ExtractBlankNode(context.blankNode());
             if (context.literal() != null)
                 return ExtractLiteral(context.literal());
             if (context.collection() != null)
@@ -402,8 +442,9 @@ public sealed class SinglePassTrigLoader
         private string ExtractIriRef(ITerminalNode node)
         {
             var text = node.GetText();
-            // Remove angle brackets and unescape
-            return UnescapeIri(text.Substring(1, text.Length - 2));
+            var iri = UnescapeIri(text.Substring(1, text.Length - 2));
+
+            return ResolveRelativeIri(iri);
         }
 
         private string ExpandPrefixedName(TrigParser.PrefixedNameContext context)

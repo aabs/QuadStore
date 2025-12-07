@@ -5,7 +5,6 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using FluentAssertions;
 using TripleStore.Core;
-using VDS.RDF.Parsing;
 using Xunit;
 
 namespace TripleStore.Tests;
@@ -52,7 +51,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -71,7 +70,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -89,7 +88,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -109,7 +108,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -127,7 +126,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -145,7 +144,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -163,7 +162,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -183,7 +182,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -201,7 +200,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -219,7 +218,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -237,7 +236,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -255,7 +254,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -273,7 +272,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -292,7 +291,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -310,7 +309,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -328,7 +327,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -346,7 +345,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -364,7 +363,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -382,7 +381,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -406,13 +405,13 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
 
         // Assert
-        act.Should().Throw<RdfParseException>();
+        act.Should().Throw<TrigParseException>();
     }
 
     [Fact]
@@ -424,13 +423,13 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
 
         // Assert
-        act.Should().Throw<RdfParseException>();
+        act.Should().Throw<TrigParseException>();
     }
 
     [Fact]
@@ -442,13 +441,13 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
 
         // Assert
-        act.Should().Throw<RdfParseException>();
+        act.Should().Throw<TrigParseException>();
     }
 
     [Fact]
@@ -460,13 +459,13 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
 
         // Assert
-        act.Should().Throw<RdfParseException>();
+        act.Should().Throw<TrigParseException>();
     }
 
     [Fact]
@@ -478,13 +477,13 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
 
         // Assert
-        act.Should().Throw<RdfParseException>();
+        act.Should().Throw<TrigParseException>();
     }
 
     [Fact]
@@ -496,13 +495,13 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
 
         // Assert
-        act.Should().Throw<RdfParseException>();
+        act.Should().Throw<TrigParseException>();
     }
 
     [Fact]
@@ -514,13 +513,13 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
 
         // Assert
-        act.Should().Throw<RdfParseException>();
+        act.Should().Throw<TrigParseException>();
     }
 
     #endregion
@@ -536,7 +535,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -555,7 +554,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);
@@ -573,7 +572,7 @@ public class TriGLoaderW3CComplianceTests
 
         var dir = NewTempDir();
         var quadStore = new QuadStore(dir);
-        var loader = new TriGLoader(quadStore);
+        var loader = new SinglePassTrigLoader(quadStore);
 
         // Act
         Action act = () => loader.LoadFromString(testContent);

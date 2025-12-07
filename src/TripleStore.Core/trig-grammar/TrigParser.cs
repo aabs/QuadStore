@@ -42,7 +42,7 @@ public partial class TrigParser : Parser {
 		RBRACK=22, DOT=23, COMMA=24, SEMI=25, INTEGER=26, DECIMAL=27, DOUBLE=28, 
 		STRING_LITERAL_QUOTE=29, STRING_LITERAL_SINGLE_QUOTE=30, STRING_LITERAL_LONG_SINGLE_QUOTE=31, 
 		STRING_LITERAL_LONG_QUOTE=32, LANG_DIR=33, IRIREF=34, PNAME_NS=35, PNAME_LN=36, 
-		BLANK_NODE_LABEL=37, ANON=38, WS=39, COMMENT=40, HATHAT_WS=41, BlankNode=42;
+		BLANK_NODE_LABEL=37, ANON=38, WS=39, COMMENT=40, HATHAT_WS=41;
 	public const int
 		RULE_trigDoc = 0, RULE_block = 1, RULE_triplesOrGraph = 2, RULE_triples2 = 3, 
 		RULE_wrappedGraph = 4, RULE_triplesBlock = 5, RULE_labelOrSubject = 6, 
@@ -79,7 +79,7 @@ public partial class TrigParser : Parser {
 		"DOT", "COMMA", "SEMI", "INTEGER", "DECIMAL", "DOUBLE", "STRING_LITERAL_QUOTE", 
 		"STRING_LITERAL_SINGLE_QUOTE", "STRING_LITERAL_LONG_SINGLE_QUOTE", "STRING_LITERAL_LONG_QUOTE", 
 		"LANG_DIR", "IRIREF", "PNAME_NS", "PNAME_LN", "BLANK_NODE_LABEL", "ANON", 
-		"WS", "COMMENT", "HATHAT_WS", "BlankNode"
+		"WS", "COMMENT", "HATHAT_WS"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -557,7 +557,7 @@ public partial class TrigParser : Parser {
 			State = 129;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & 4518308225024L) != 0)) {
+			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & 532578574336L) != 0)) {
 				{
 				State = 128;
 				triplesBlock();
@@ -630,7 +630,7 @@ public partial class TrigParser : Parser {
 				State = 136;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & 4518308225024L) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & 532578574336L) != 0)) {
 					{
 					State = 135;
 					triplesBlock();
@@ -1254,7 +1254,8 @@ public partial class TrigParser : Parser {
 			case IRIREF:
 			case PNAME_NS:
 			case PNAME_LN:
-			case BlankNode:
+			case BLANK_NODE_LABEL:
+			case ANON:
 				EnterOuterAlt(_localctx, 1);
 				{
 				State = 177;
@@ -1557,7 +1558,9 @@ public partial class TrigParser : Parser {
 		[System.Diagnostics.DebuggerNonUserCode] public IriContext iri() {
 			return GetRuleContext<IriContext>(0);
 		}
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode BlankNode() { return GetToken(TrigParser.BlankNode, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public BlankNodeContext blankNode() {
+			return GetRuleContext<BlankNodeContext>(0);
+		}
 		[System.Diagnostics.DebuggerNonUserCode] public CollectionContext collection() {
 			return GetRuleContext<CollectionContext>(0);
 		}
@@ -1601,11 +1604,12 @@ public partial class TrigParser : Parser {
 				iri();
 				}
 				break;
-			case BlankNode:
+			case BLANK_NODE_LABEL:
+			case ANON:
 				EnterOuterAlt(_localctx, 2);
 				{
 				State = 219;
-				Match(BlankNode);
+				blankNode();
 				}
 				break;
 			case LPAREN:
@@ -1683,7 +1687,9 @@ public partial class TrigParser : Parser {
 		[System.Diagnostics.DebuggerNonUserCode] public IriContext iri() {
 			return GetRuleContext<IriContext>(0);
 		}
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode BlankNode() { return GetToken(TrigParser.BlankNode, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public BlankNodeContext blankNode() {
+			return GetRuleContext<BlankNodeContext>(0);
+		}
 		[System.Diagnostics.DebuggerNonUserCode] public CollectionContext collection() {
 			return GetRuleContext<CollectionContext>(0);
 		}
@@ -1741,7 +1747,7 @@ public partial class TrigParser : Parser {
 				EnterOuterAlt(_localctx, 2);
 				{
 				State = 226;
-				Match(BlankNode);
+				blankNode();
 				}
 				break;
 			case 3:
@@ -1975,7 +1981,7 @@ public partial class TrigParser : Parser {
 			State = 247;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 4526831052288L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 541101401600L) != 0)) {
 				{
 				{
 				State = 244;
@@ -2141,7 +2147,8 @@ public partial class TrigParser : Parser {
 			case IRIREF:
 			case PNAME_NS:
 			case PNAME_LN:
-			case BlankNode:
+			case BLANK_NODE_LABEL:
+			case ANON:
 				break;
 			default:
 				break;
@@ -3169,7 +3176,7 @@ public partial class TrigParser : Parser {
 	}
 
 	private static int[] _serializedATN = {
-		4,1,42,328,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
+		4,1,41,328,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
 		7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
 		2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,7,20,2,21,7,21,
 		2,22,7,22,2,23,7,23,2,24,7,24,2,25,7,25,2,26,7,26,2,27,7,27,2,28,7,28,
@@ -3241,9 +3248,9 @@ public partial class TrigParser : Parser {
 		206,5,24,0,0,206,207,3,42,21,0,207,208,3,78,39,0,208,210,1,0,0,0,209,205,
 		1,0,0,0,210,213,1,0,0,0,211,209,1,0,0,0,211,212,1,0,0,0,212,35,1,0,0,0,
 		213,211,1,0,0,0,214,217,3,40,20,0,215,217,5,8,0,0,216,214,1,0,0,0,216,
-		215,1,0,0,0,217,37,1,0,0,0,218,222,3,58,29,0,219,222,5,42,0,0,220,222,
+		215,1,0,0,0,217,37,1,0,0,0,218,222,3,58,29,0,219,222,3,62,31,0,220,222,
 		3,48,24,0,221,218,1,0,0,0,221,219,1,0,0,0,221,220,1,0,0,0,222,39,1,0,0,
-		0,223,224,3,58,29,0,224,41,1,0,0,0,225,233,3,58,29,0,226,233,5,42,0,0,
+		0,223,224,3,58,29,0,224,41,1,0,0,0,225,233,3,58,29,0,226,233,3,62,31,0,
 		227,233,3,48,24,0,228,233,3,46,23,0,229,233,3,44,22,0,230,233,3,72,36,
 		0,231,233,3,66,33,0,232,225,1,0,0,0,232,226,1,0,0,0,232,227,1,0,0,0,232,
 		228,1,0,0,0,232,229,1,0,0,0,232,230,1,0,0,0,232,231,1,0,0,0,233,43,1,0,

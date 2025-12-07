@@ -64,13 +64,13 @@ objectList: object annotation (COMMA object annotation)*;
 
 verb: predicate | A;
 
-subject: iri | BlankNode | collection;
+subject: iri | blankNode | collection;
 
 predicate: iri;
 
 object:
 	iri
-	| BlankNode
+	| blankNode
 	| collection
 	| blankNodePropertyList
 	| literal
