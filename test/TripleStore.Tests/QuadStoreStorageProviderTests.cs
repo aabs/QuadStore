@@ -395,6 +395,21 @@ public class QuadStoreStorageProviderTests
     }
 
     [Fact]
+    public void ListGraphs_WithAngledBracketUris_NormalisesAndReturnsUris()
+    {
+        // Data stored with angle-bracketed graph URIs (as produced by the TriG loader)
+        using var store = NewStore();
+        store.Append("<http://example.org/S>", "<http://example.org/P>", "<http://example.org/O>", "<http://example.org/g>");
+
+        var provider = new QuadStoreStorageProvider(store);
+        var graphs = provider.ListGraphs().ToList();
+
+        // Should return a proper Uri, not a string like "<http://...>"
+        graphs.Should().ContainSingle();
+        graphs[0].AbsoluteUri.Should().Be("http://example.org/g");
+    }
+
+    [Fact]
     public void ListGraphNames_ReturnsDistinctStrings()
     {
         using var store = NewStore();
@@ -407,6 +422,41 @@ public class QuadStoreStorageProviderTests
         names.Should().HaveCount(2);
         names.Should().Contain("http://example.org/g1");
         names.Should().Contain("http://example.org/g2");
+    }
+
+    [Fact]
+    public void ListGraphNames_WithAngledBracketUris_StripsAngleBrackets()
+    {
+        // Data stored with angle-bracketed graph URIs (as produced by the TriG loader)
+        using var store = NewStore();
+        store.Append("<http://example.org/S>", "<http://example.org/P>", "<http://example.org/O>", "<http://example.org/g1>");
+        store.Append("<http://example.org/S>", "<http://example.org/P>", "<http://example.org/O>", "<http://example.org/g2>");
+
+        var provider = new QuadStoreStorageProvider(store);
+        var names = provider.ListGraphNames().ToList();
+
+        names.Should().HaveCount(2);
+        names.Should().Contain("http://example.org/g1");
+        names.Should().Contain("http://example.org/g2");
+        names.Should().NotContain("<http://example.org/g1>");
+        names.Should().NotContain("<http://example.org/g2>");
+    }
+
+    [Fact]
+    public void ListGraphNames_WithMixedUriFormats_NormalisesAll()
+    {
+        // One graph stored with angle brackets, one without — both should appear as plain URIs.
+        using var store = NewStore();
+        store.Append("<http://example.org/S>", "<http://example.org/P>", "<http://example.org/O>", "<http://example.org/bracketed>");
+        store.Append("http://example.org/S", "http://example.org/P", "http://example.org/O", "http://example.org/plain");
+
+        var provider = new QuadStoreStorageProvider(store);
+        var names = provider.ListGraphNames().ToList();
+
+        names.Should().HaveCount(2);
+        names.Should().Contain("http://example.org/bracketed");
+        names.Should().Contain("http://example.org/plain");
+        names.Should().NotContain("<http://example.org/bracketed>");
     }
 
     [Fact]
@@ -594,6 +644,58 @@ public class QuadStoreStorageProviderTests
         var back = QuadStoreStorageProvider.StringToNode(str, factory);
         back.Should().BeAssignableTo<ILiteralNode>();
         ((ILiteralNode)back).Value.Should().Be("line1\nline2");
+    }
+
+    [Fact]
+    public void RoundTrip_LiteralWithBackslashN()
+    {
+        // Literal is the two-char string backslash + 'n', NOT a newline character.
+        var factory = new NodeFactory();
+        var node = factory.CreateLiteralNode("value\\ntext");
+        var str = QuadStoreStorageProvider.NodeToString(node);
+        // EscapeLiteral turns \ into \\ and then the n is untouched → \\n in the stored string.
+        str.Should().Be("\"value\\\\ntext\"");
+        var back = QuadStoreStorageProvider.StringToNode(str, factory);
+        back.Should().BeAssignableTo<ILiteralNode>();
+        ((ILiteralNode)back).Value.Should().Be("value\\ntext");
+    }
+
+    [Fact]
+    public void RoundTrip_LiteralWithBackslashR()
+    {
+        // Literal is backslash + 'r', NOT a carriage-return.
+        var factory = new NodeFactory();
+        var node = factory.CreateLiteralNode("value\\rtext");
+        var str = QuadStoreStorageProvider.NodeToString(node);
+        str.Should().Be("\"value\\\\rtext\"");
+        var back = QuadStoreStorageProvider.StringToNode(str, factory);
+        back.Should().BeAssignableTo<ILiteralNode>();
+        ((ILiteralNode)back).Value.Should().Be("value\\rtext");
+    }
+
+    [Fact]
+    public void RoundTrip_LiteralWithBackslashQuote()
+    {
+        // Literal is backslash + '"'.
+        var factory = new NodeFactory();
+        var node = factory.CreateLiteralNode("say \\\"hello\\\"");
+        var str = QuadStoreStorageProvider.NodeToString(node);
+        str.Should().Be("\"say \\\\\\\"hello\\\\\\\"\"");
+        var back = QuadStoreStorageProvider.StringToNode(str, factory);
+        back.Should().BeAssignableTo<ILiteralNode>();
+        ((ILiteralNode)back).Value.Should().Be("say \\\"hello\\\"");
+    }
+
+    [Fact]
+    public void RoundTrip_LiteralWithCarriageReturn()
+    {
+        var factory = new NodeFactory();
+        var node = factory.CreateLiteralNode("line1\rline2");
+        var str = QuadStoreStorageProvider.NodeToString(node);
+        str.Should().Be("\"line1\\rline2\"");
+        var back = QuadStoreStorageProvider.StringToNode(str, factory);
+        back.Should().BeAssignableTo<ILiteralNode>();
+        ((ILiteralNode)back).Value.Should().Be("line1\rline2");
     }
 
     // ── StringToNode edge cases ───────────────────────────────────────────────

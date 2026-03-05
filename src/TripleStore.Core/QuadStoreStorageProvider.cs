@@ -106,7 +106,8 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     {
         if (g == null) throw new ArgumentNullException(nameof(g));
         LoadGraphInternal(g, graphUri);
-        if (graphUri != null && Uri.TryCreate(graphUri, UriKind.Absolute, out var uri))
+        var normalised = graphUri != null ? NormaliseGraphUri(graphUri) : null;
+        if (normalised != null && Uri.TryCreate(normalised, UriKind.Absolute, out var uri))
             g.BaseUri = uri;
     }
 
@@ -187,7 +188,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     public IEnumerable<Uri> ListGraphs()
     {
         return _store.Query()
-            .Select(q => q.graph)
+            .Select(q => NormaliseGraphUri(q.graph))
             .Distinct()
             .Where(g => Uri.TryCreate(g, UriKind.Absolute, out _))
             .Select(g => new Uri(g));
@@ -197,7 +198,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     public IEnumerable<string> ListGraphNames()
     {
         return _store.Query()
-            .Select(q => q.graph)
+            .Select(q => NormaliseGraphUri(q.graph))
             .Distinct();
     }
 
@@ -328,9 +329,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             return _store.Query();
 
         // Normalise: derive both the plain and angle-bracketed form of the URI.
-        string plain = graphUri.StartsWith("<") && graphUri.EndsWith(">")
-            ? graphUri[1..^1]
-            : graphUri;
+        string plain = NormaliseGraphUri(graphUri);
         string bracketed = $"<{plain}>";
 
         var seen = new HashSet<(string, string, string, string)>();
@@ -344,6 +343,16 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
         return Merge();
     }
 
+    /// <summary>
+    /// Builds a snapshot <see cref="LeviathanQueryProcessor"/> by loading every named graph
+    /// from the QuadStore into a fresh in-memory dataset.
+    /// </summary>
+    /// <remarks>
+    /// <b>Performance note:</b> this method creates a full in-memory copy of the store on
+    /// every call. For large stores or high query rates, consider using a purpose-built
+    /// in-memory RDF store (e.g. <see cref="VDS.RDF.TripleStore"/> populated once) and
+    /// reloading only on writes.
+    /// </remarks>
     private LeviathanQueryProcessor CreateQueryProcessor()
     {
         var tripleStore = new VDS.RDF.TripleStore();
@@ -358,6 +367,13 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
         }
         return new LeviathanQueryProcessor(new InMemoryDataset(tripleStore, unionDefaultGraph: true));
     }
+
+    /// <summary>
+    /// Strips surrounding angle brackets from a stored graph URI string, returning the
+    /// plain absolute URI.  If the value is not angle-bracketed it is returned unchanged.
+    /// </summary>
+    private static string NormaliseGraphUri(string graphUri) =>
+        graphUri.StartsWith("<") && graphUri.EndsWith(">") ? graphUri[1..^1] : graphUri;
 
     private const string XsdStringUri = "http://www.w3.org/2001/XMLSchema#string";
 
@@ -456,10 +472,36 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             .Replace("\n", "\\n")
             .Replace("\r", "\\r");
 
-    private static string UnescapeLiteral(string value) =>
-        value
-            .Replace("\\\"", "\"")
-            .Replace("\\n", "\n")
-            .Replace("\\r", "\r")
-            .Replace("\\\\", "\\");
+    private static string UnescapeLiteral(string value)
+    {
+        // Process escape sequences token-by-token to avoid chained Replace corruption.
+        // e.g. "\\n" must become backslash+n, not a newline.
+        var sb = new System.Text.StringBuilder(value.Length);
+        int i = 0;
+        while (i < value.Length)
+        {
+            if (value[i] == '\\' && i + 1 < value.Length)
+            {
+                switch (value[i + 1])
+                {
+                    case '\\': sb.Append('\\'); i += 2; break;
+                    case '"':  sb.Append('"');  i += 2; break;
+                    case 'n':  sb.Append('\n'); i += 2; break;
+                    case 'r':  sb.Append('\r'); i += 2; break;
+                    default:
+                        // Unknown escape sequence: pass through the backslash and let the
+                        // next iteration handle the following character (e.g. \x → \x).
+                        sb.Append(value[i]);
+                        i++;
+                        break;
+                }
+            }
+            else
+            {
+                sb.Append(value[i]);
+                i++;
+            }
+        }
+        return sb.ToString();
+    }
 }
