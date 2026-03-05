@@ -329,7 +329,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
 
         // Normalise: derive both the plain and angle-bracketed form of the URI.
         string plain = graphUri.StartsWith("<") && graphUri.EndsWith(">")
-            ? graphUri.Substring(1, graphUri.Length - 2)
+            ? graphUri[1..^1]
             : graphUri;
         string bracketed = $"<{plain}>";
 
@@ -404,12 +404,12 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
 
         // Blank node: _:id
         if (value.StartsWith("_:"))
-            return factory.CreateBlankNode(value.Substring(2));
+            return factory.CreateBlankNode(value[2..]);
 
         // Angle-bracketed URI: <http://...>
         if (value.StartsWith("<") && value.EndsWith(">"))
         {
-            var uriStr = value.Substring(1, value.Length - 2);
+            var uriStr = value[1..^1];
             if (Uri.TryCreate(uriStr, UriKind.Absolute, out var uri))
                 return factory.CreateUriNode(uri);
         }
@@ -425,8 +425,8 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             int dtIdx = value.LastIndexOf("\"^^<");
             if (dtIdx > 0)
             {
-                var litVal = UnescapeLiteral(value.Substring(1, dtIdx - 1));
-                var dtStr = value.Substring(dtIdx + 4, value.Length - dtIdx - 5);
+                var litVal = UnescapeLiteral(value[1..dtIdx]);
+                var dtStr = value[(dtIdx + 4)..^1];
                 if (Uri.TryCreate(dtStr, UriKind.Absolute, out var dtUri))
                     return factory.CreateLiteralNode(litVal, dtUri);
             }
@@ -435,14 +435,14 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             int langIdx = value.LastIndexOf("\"@");
             if (langIdx > 0)
             {
-                var litVal = UnescapeLiteral(value.Substring(1, langIdx - 1));
-                var lang = value.Substring(langIdx + 2);
+                var litVal = UnescapeLiteral(value[1..langIdx]);
+                var lang = value[(langIdx + 2)..];
                 return factory.CreateLiteralNode(litVal, lang);
             }
 
             // Plain literal: "value"
             if (value.EndsWith("\"") && value.Length >= 2)
-                return factory.CreateLiteralNode(UnescapeLiteral(value.Substring(1, value.Length - 2)));
+                return factory.CreateLiteralNode(UnescapeLiteral(value[1..^1]));
         }
 
         // Fallback: treat the raw string as a plain literal
