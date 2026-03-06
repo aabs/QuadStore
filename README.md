@@ -22,38 +22,115 @@
 
 ## 🚀 Quick Start
 
-### Load and query RDF data with SPARQL
+### 1) Use QuadStore through dotNetRDF + Leviathan
+
+`QuadStore` is the core in-memory quad store.
+`QuadStoreStorageProvider` adapts it to the standard dotNetRDF storage interfaces.
+That means Leviathan can run SPARQL queries against your QuadStore data.
 
 ```csharp
 using TripleStore.Core;
+using VDS.RDF;
+using VDS.RDF.Query;
+using VDS.RDF.Storage;
 
-// Create a quad store
 using var store = new QuadStore("./store-data");
-
-// Load TriG data in a single pass
 var loader = new SinglePassTrigLoader(store);
 loader.LoadFromFile("data.trig");
 
-// Query with SPARQL
-var engine = new MinimalSparqlEngine(store);
-var sparql = @"
-    SELECT ?person ?name ?friend
+IStorageProvider provider = new QuadStoreStorageProvider(store);
+var queryable = (IQueryableStorage)provider;
+
+// Standards-based SPARQL query execution via Leviathan
+var query = @"
+    SELECT ?person ?name
     WHERE {
         ?person <http://xmlns.com/foaf/0.1/name> ?name .
-        ?person <http://xmlns.com/foaf/0.1/knows> ?friend .
-    }
-";
-var results = engine.ExecuteQuery(sparql);
+    }";
 
-// Iterate through results
-foreach (var binding in results)
+var results = (SparqlResultSet)queryable.Query(query);
+
+foreach (var row in results)
 {
-    var person = binding["?person"];
-    var name = binding["?name"];
-    var friend = binding["?friend"];
-    Console.WriteLine($"{name} ({person}) knows {friend}");
+    Console.WriteLine($"{row["person"]} -> {row["name"]}");
 }
 ```
+
+### 2) Minimal ASP.NET endpoint (SPARQL Protocol style)
+
+This example exposes a simple `/sparql` endpoint that accepts a SPARQL query and returns:
+- SPARQL JSON results for `SELECT`/`ASK`
+- Turtle for `CONSTRUCT`/`DESCRIBE`
+
+```csharp
+using TripleStore.Core;
+using VDS.RDF;
+using VDS.RDF.Query;
+using VDS.RDF.Storage;
+using VDS.RDF.Writing;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+var quadStore = new QuadStore("./store-data");
+var provider = new QuadStoreStorageProvider(quadStore);
+var queryable = (IQueryableStorage)provider;
+const int maxSparqlQueryLength = 100_000; // tune for your deployment
+
+app.MapGet("/sparql", (HttpContext http) =>
+{
+    var sparql = http.Request.Query["query"].ToString();
+    if (string.IsNullOrWhiteSpace(sparql))
+    {
+        return Results.BadRequest("Missing 'query' parameter.");
+    }
+    if (sparql.Length > maxSparqlQueryLength)
+    {
+        return Results.BadRequest("Query too large.");
+    }
+
+    object result;
+    try
+    {
+        result = queryable.Query(sparql);
+    }
+    catch (RdfQueryException ex)
+    {
+        return Results.BadRequest($"Invalid SPARQL query: {ex.Message}");
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"SPARQL execution failed: {ex.Message}");
+    }
+
+    if (result is SparqlResultSet set)
+    {
+        var sw = new StringWriter();
+        new SparqlJsonWriter().Save(set, sw);
+        return Results.Text(sw.ToString(), "application/sparql-results+json");
+    }
+
+    if (result is IGraph graph)
+    {
+        var sw = new StringWriter();
+        new CompressingTurtleWriter().Save(graph, sw);
+        return Results.Text(sw.ToString(), "text/turtle");
+    }
+
+    return Results.Problem("Unsupported SPARQL result type.");
+});
+
+app.Run();
+```
+
+## ⚠️ Current Limitations
+
+QuadStore + `QuadStoreStorageProvider` is intentionally append-only currently:
+
+- ❌ **No graph deletion** (`DeleteGraph` is not supported)
+- ❌ **No triple removal in `UpdateGraph`** (additions only)
+- ❌ **No SPARQL Update** (`IUpdateableStorage.Update` throws)
+- ℹ️ **Per-query in-memory snapshot for Leviathan queries** (simple and correct, but can be slower on very large datasets)
 
 
 ## 📊 Performance at a Glance
