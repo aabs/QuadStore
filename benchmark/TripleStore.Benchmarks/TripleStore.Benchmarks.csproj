@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\TripleStore.Core\TripleStore.Core.csproj" />
+    <ProjectReference Include="..\..\src\TripleStore.Core\QuadStore.Core.csproj" />
   </ItemGroup>
 
 </Project>
