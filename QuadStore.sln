@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuadStore.Storage", "src\Qu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuadStore.Tests", "test\QuadStore.Tests\QuadStore.Tests.csproj", "{6AA5A7AC-86DA-77AA-1C84-4AD27D98F656}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{0D5DAF19-2EF9-43C9-8B23-8D77E1DADF29}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoadTrigFileIntoStore", "samples\LoadTrigFileIntoStore\LoadTrigFileIntoStore.csproj", "{7C89BE5B-6A9E-4E3E-EBB0-913EC6CDBC90}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +37,10 @@ Global
 		{6AA5A7AC-86DA-77AA-1C84-4AD27D98F656}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6AA5A7AC-86DA-77AA-1C84-4AD27D98F656}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6AA5A7AC-86DA-77AA-1C84-4AD27D98F656}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C89BE5B-6A9E-4E3E-EBB0-913EC6CDBC90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C89BE5B-6A9E-4E3E-EBB0-913EC6CDBC90}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C89BE5B-6A9E-4E3E-EBB0-913EC6CDBC90}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C89BE5B-6A9E-4E3E-EBB0-913EC6CDBC90}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -41,8 +49,10 @@ Global
 		{8FB13030-FB31-CB29-1017-FFFC62032C50} = {74CA7E3C-32C1-46DE-8F0C-DDD263815006}
 		{852589BF-FAE5-96CB-7AB5-0520B6BFD76A} = {74CA7E3C-32C1-46DE-8F0C-DDD263815006}
 		{6AA5A7AC-86DA-77AA-1C84-4AD27D98F656} = {A2519C6C-9B49-4C91-A0B9-2666F02F742C}
+		{7C89BE5B-6A9E-4E3E-EBB0-913EC6CDBC90} = {0D5DAF19-2EF9-43C9-8B23-8D77E1DADF29}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1437EF56-6074-4158-A149-08A9E05708BE}
+		FileExplorer = 
 	EndGlobalSection
 EndGlobal
