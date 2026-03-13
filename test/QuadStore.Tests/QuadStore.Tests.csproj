@@ -24,10 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\TripleStore.Core\QuadStore.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <EditorConfigFiles Remove="C:\Dev\aabs\triple_store\test\TripleStore.Tests\.editorconfig" />
   </ItemGroup>
 
@@ -39,6 +35,11 @@
     <EmbeddedResource Include="test-data\semopenalex-data-sample.trig">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\QuadStore.Core\QuadStore.Core.csproj" />
+    <ProjectReference Include="..\..\src\QuadStore.Storage\QuadStore.Storage.csproj" />
   </ItemGroup>
 
 </Project>

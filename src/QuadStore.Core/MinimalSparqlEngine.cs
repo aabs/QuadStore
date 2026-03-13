@@ -63,13 +63,19 @@ public sealed class MinimalSparqlEngine
                 continue;
             }
 
-            // Get graph specifier as a URI (no variables supported)
+            // Get graph specifier as a URI (or variable)
             string? graphUri = null;
+            string? graphVarName = null;
             IToken? spec = gp.GraphSpecifier;
             if (spec is not null && !string.IsNullOrEmpty(spec.Value))
             {
                 var val = spec.Value;
-                if (val.StartsWith("<") && val.EndsWith(">"))
+                // Check if it's a variable
+                if (val.StartsWith("?"))
+                {
+                    graphVarName = val.Substring(1); // Remove the '?' prefix
+                }
+                else if (val.StartsWith("<") && val.EndsWith(">"))
                 {
                     graphUri = val;
                 }
@@ -90,21 +96,46 @@ public sealed class MinimalSparqlEngine
                 }
             }
 
-            // If no graph URI (e.g., variable), skip as unsupported
-            if (graphUri is null) continue;
-
             var graphPatterns = gp.TriplePatterns.OfType<TriplePattern>().Select(tp => ToSPO(tp, q)).ToList();
             if (graphPatterns.Count == 0) continue;
 
+            // If graph is a variable, query without graph restriction and bind the variable
+            if (graphVarName is not null)
+            {
+                // Query without graph restriction to get all matching triples
+                IEnumerable<(string subject, string predicate, string obj, string graph)>? current = null;
+                foreach (var (s, p, o) in graphPatterns)
+                {
+                    var next = QueryDual(_store, s, p, o, null);
+                    current = current is null ? next : current.Intersect(next);
+                }
+
+                foreach (var (subject, predicate, obj, graph) in current ?? Enumerable.Empty<(string,string,string,string)>())
+                {
+                    var row = new Dictionary<string, string>();
+                    static string Wrap(string v) => (v.StartsWith("http://") || v.StartsWith("https://")) && !v.StartsWith("<") ? $"<{v}>" : v;
+                    if (graphPatterns[0].s is null) row["s"] = Wrap(subject);
+                    if (graphPatterns[0].p is null) row["p"] = Wrap(predicate);
+                    if (graphPatterns[0].o is null) row["o"] = Wrap(obj);
+                    // Bind the graph variable
+                    row[graphVarName] = Wrap(graph);
+                    results.Add(row);
+                }
+                continue;
+            }
+
+            // If no graph URI and no variable, skip as unsupported
+            if (graphUri is null) continue;
+
             // Execute with a graph restriction by intersecting with graph filter
-            IEnumerable<(string subject, string predicate, string obj, string graph)>? current = null;
+            IEnumerable<(string subject, string predicate, string obj, string graph)>? current2 = null;
             foreach (var (s, p, o) in graphPatterns)
             {
                 var next = QueryDual(_store, s, p, o, graphUri);
-                current = current is null ? next : current.Intersect(next);
+                current2 = current2 is null ? next : current2.Intersect(next);
             }
 
-            foreach (var (subject, predicate, obj, graph) in current ?? Enumerable.Empty<(string,string,string,string)>())
+            foreach (var (subject, predicate, obj, graph) in current2 ?? Enumerable.Empty<(string,string,string,string)>())
             {
                 var row = new Dictionary<string, string>();
                 static string Wrap(string v) => (v.StartsWith("http://") || v.StartsWith("https://")) && !v.StartsWith("<") ? $"<{v}>" : v;

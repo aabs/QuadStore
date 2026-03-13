@@ -1,4 +1,4 @@
-using Antlr4.Runtime;
+﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 
@@ -464,10 +464,11 @@ public sealed class SinglePassTrigLoader
                 {
                     return baseIri + localName;
                 }
-                else if (prefix == "")
+                else
                 {
-                    // Default namespace
-                    return _baseUri.TrimEnd('/') + "/" + localName;
+                    // Undeclared prefix - must throw error per W3C spec
+                    var prefixDisplay = string.IsNullOrEmpty(prefix) ? "<empty>" : prefix;
+                    throw new TrigParseException($"Prefix '{prefixDisplay}' is not declared. Use @prefix directive to declare prefixes before use.");
                 }
             }
 
