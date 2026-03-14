@@ -73,7 +73,7 @@ public sealed class DictionaryEncoder
                 _reverse.Add(s);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // logging hook
             throw;

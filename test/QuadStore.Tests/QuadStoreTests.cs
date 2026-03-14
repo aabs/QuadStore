@@ -104,10 +104,10 @@ public class QuadStoreTests
             Task.Run(() => qs.Query(predicate: "ex:type").ToList()),
             Task.Run(() => qs.Query(obj: "ex:Bob").ToList()),
         };
-        await Task.WhenAll(tasks);
-        tasks[0].Result.Should().HaveCount(2);
-        tasks[1].Result.Should().HaveCount(2);
-        tasks[2].Result.Should().HaveCount(1);
+        var results = await Task.WhenAll(tasks);
+        results[0].Should().HaveCount(2);
+        results[1].Should().HaveCount(2);
+        results[2].Should().HaveCount(1);
     }
 
     [Fact]

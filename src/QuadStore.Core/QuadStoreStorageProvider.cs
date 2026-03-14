@@ -90,7 +90,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <summary>
     /// Returns <see langword="null"/>. QuadStore is a standalone store with no parent server.
     /// </summary>
-    public IStorageServer ParentServer => null;
+    public IStorageServer? ParentServer => null;
 
     /// <inheritdoc/>
     public void LoadGraph(IGraph g, Uri graphUri)
@@ -263,7 +263,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
-    private void LoadGraphInternal(IGraph g, string graphUri)
+    private void LoadGraphInternal(IGraph g, string? graphUri)
     {
         foreach (var (s, p, o, _) in QueryByGraph(graphUri))
         {
@@ -274,7 +274,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
         }
     }
 
-    private void LoadGraphHandlerInternal(IRdfHandler handler, string graphUri)
+    private void LoadGraphHandlerInternal(IRdfHandler handler, string? graphUri)
     {
         var factory = new NodeFactory();
         handler.StartRdf();
@@ -323,7 +323,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// Queries the store for triples in the given named graph, trying both the plain URI and
     /// the angle-bracketed form to cover data inserted in either format.
     /// </summary>
-    private IEnumerable<(string s, string p, string o, string g)> QueryByGraph(string graphUri)
+    private IEnumerable<(string s, string p, string o, string g)> QueryByGraph(string? graphUri)
     {
         if (graphUri == null)
             return _store.Query();

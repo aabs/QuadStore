@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using SparqlEngine;
@@ -10,6 +9,8 @@ namespace TripleStore.Tests;
 
 public class MinimalSparqlEngineTests
 {
+    private static (string?, string?, string?)[] Patterns(params (string?, string?, string?)[] p) => p;
+
     private static QuadStore NewStore()
     {
         var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sparql_" + Guid.NewGuid());
@@ -34,7 +35,7 @@ public class MinimalSparqlEngineTests
     public void ExecuteBasicGraphPattern_EmptyPatterns_ReturnsEmpty()
     {
         var engine = new MinimalSparqlEngine(NewStore());
-        engine.ExecuteBasicGraphPattern(Array.Empty<(string? s, string? p, string? o)>()).Should().BeEmpty();
+        engine.ExecuteBasicGraphPattern(Patterns()).Should().BeEmpty();
     }
 
     [Fact]
@@ -44,7 +45,7 @@ public class MinimalSparqlEngineTests
         store.Append("ex:Ada", "ex:type", "ex:Person", "ex:G");
         store.Append("ex:Ada", "ex:knows", "ex:Bob", "ex:G");
         var engine = new MinimalSparqlEngine(store);
-        var res = engine.ExecuteBasicGraphPattern(new[]{(s:"ex:Ada", p:"ex:type", o:"ex:Person")}).ToList();
+        var res = engine.ExecuteBasicGraphPattern(Patterns(("ex:Ada", "ex:type", "ex:Person"))).ToList();
         res.Should().HaveCount(1);
         res[0].Keys.Should().BeEmpty();
     }
@@ -56,7 +57,7 @@ public class MinimalSparqlEngineTests
         store.Append("ex:Ada", "ex:knows", "ex:Bob", "ex:G");
         store.Append("ex:Bob", "ex:knows", "ex:Charlie", "ex:G");
         var engine = new MinimalSparqlEngine(store);
-        var res = engine.ExecuteBasicGraphPattern(new[]{(s:(string?)null, p:"ex:knows", o:"ex:Bob")}).ToList();
+        var res = engine.ExecuteBasicGraphPattern(Patterns((null, "ex:knows", "ex:Bob"))).ToList();
         res.Should().HaveCount(1);
         res[0].Should().ContainKey("s");
         res[0]["s"].Should().Be("ex:Ada");
@@ -71,7 +72,7 @@ public class MinimalSparqlEngineTests
         store.Append("ex:Ada", "ex:knows", "ex:Bob", "ex:G");
         store.Append("ex:Ada", "ex:knows", "ex:Eve", "ex:G");
         var engine = new MinimalSparqlEngine(store);
-        var res = engine.ExecuteBasicGraphPattern(new[]{(s:"ex:Ada", p:"ex:knows", o:(string?)null)}).ToList();
+        var res = engine.ExecuteBasicGraphPattern(Patterns(("ex:Ada", "ex:knows", null))).ToList();
         res.Should().HaveCount(2);
         res.Select(r => r["o"]).OrderBy(x => x).Should().Contain(new[]{"ex:Bob","ex:Eve"});
     }
@@ -83,7 +84,7 @@ public class MinimalSparqlEngineTests
         store.Append("ex:Ada", "ex:type", "ex:Person", "ex:G");
         store.Append("ex:Ada", "ex:knows", "ex:Bob", "ex:G");
         var engine = new MinimalSparqlEngine(store);
-        var res = engine.ExecuteBasicGraphPattern(new[]{(s:"ex:Ada", p:(string?)null, o:"ex:Bob")}).ToList();
+        var res = engine.ExecuteBasicGraphPattern(Patterns(("ex:Ada", null, "ex:Bob"))).ToList();
         res.Should().HaveCount(1);
         res[0]["p"].Should().Be("ex:knows");
     }
@@ -95,7 +96,7 @@ public class MinimalSparqlEngineTests
         store.Append("ex:Ada", "ex:type", "ex:Person", "ex:G");
         store.Append("ex:Ada", "ex:knows", "ex:Bob", "ex:G");
         var engine = new MinimalSparqlEngine(store);
-        var res = engine.ExecuteBasicGraphPattern(new[]{(s:(string?)null, p:(string?)null, o:(string?)null)}).ToList();
+        var res = engine.ExecuteBasicGraphPattern(Patterns((null, null, null))).ToList();
         res.Should().HaveCount(2);
         foreach (var r in res)
         {
@@ -177,7 +178,7 @@ SELECT ?s WHERE { ?s ex:type ex:Person . ?s ex:knows ex:Bob }";
         store.Append("ex:Bob", "ex:type", "ex:Person", "ex:G");
         store.Append("ex:Ada", "ex:knows", "ex:Bob", "ex:G");
         var engine = new MinimalSparqlEngine(store);
-        var patterns = new[]{(s:(string?)null, p:"ex:type", o:"ex:Person"), (s:(string?)null, p:"ex:knows", o:"ex:Bob")};
+        var patterns = Patterns((null, "ex:type", "ex:Person"), (null, "ex:knows", "ex:Bob"));
         var res = engine.ExecuteBasicGraphPattern(patterns).ToList();
         // Intersection will yield only rows equal across both sets; using Enumerable.Intersect on tuples requires exact match across subject, predicate, object, graph
         // Given our data, only the second row appears in second set; first set has two rows, intersect leaves none because tuples differ.
@@ -190,7 +191,7 @@ SELECT ?s WHERE { ?s ex:type ex:Person . ?s ex:knows ex:Bob }";
         var store = NewStore();
         store.Append("ex:Ada", "ex:type", "ex:Person", "ex:G");
         var engine = new MinimalSparqlEngine(store);
-        var patterns = new[]{(s:"ex:Ada", p:"ex:type", o:"ex:Person"), (s:"ex:Ada", p:"ex:type", o:"ex:Robot")};
+        var patterns = Patterns(("ex:Ada", "ex:type", "ex:Person"), ("ex:Ada", "ex:type", "ex:Robot"));
         var res = engine.ExecuteBasicGraphPattern(patterns).ToList();
         res.Should().BeEmpty();
     }
@@ -199,7 +200,7 @@ SELECT ?s WHERE { ?s ex:type ex:Person . ?s ex:knows ex:Bob }";
     public void QueryOnEmptyStore_ReturnsEmptyBindings()
     {
         var engine = new MinimalSparqlEngine(NewStore());
-        var res = engine.ExecuteBasicGraphPattern(new[]{(s:(string?)null, p:"ex:knows", o:(string?)null)});
+        var res = engine.ExecuteBasicGraphPattern(Patterns((null, "ex:knows", null)));
         res.Should().BeEmpty();
     }
 }

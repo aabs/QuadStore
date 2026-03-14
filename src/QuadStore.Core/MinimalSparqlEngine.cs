@@ -149,7 +149,7 @@ public sealed class MinimalSparqlEngine
         return results;
     }
 
-    private static (string s, string p, string o) ToSPO(TriplePattern tp, SparqlQuery q)
+    private static (string? s, string? p, string? o) ToSPO(TriplePattern tp, SparqlQuery q)
     {
         string? s = tp.Subject is NodeMatchPattern smp && smp.Node is VDS.RDF.UriNode su ? su.Uri.AbsoluteUri : null;
         string? p = tp.Predicate is NodeMatchPattern pmp && pmp.Node is VDS.RDF.UriNode pu ? pu.Uri.AbsoluteUri : null;
@@ -175,7 +175,7 @@ public sealed class MinimalSparqlEngine
         return (s, p, o);
     }
 
-    private static string ResolveQName(string val, SparqlQuery q)
+    private static string? ResolveQName(string? val, SparqlQuery q)
     {
         if (string.IsNullOrEmpty(val)) return val;
         if (val.StartsWith("<") && val.EndsWith(">")) return val.Trim('<', '>');
@@ -218,7 +218,7 @@ public sealed class MinimalSparqlEngine
         }
     }
 
-    private static IEnumerable<string> Variants(string v)
+    private static IEnumerable<string?> Variants(string? v)
     {
         if (v is null) return new string?[] { null };
         // For literals and blank nodes, do not generate angle-bracket variants
