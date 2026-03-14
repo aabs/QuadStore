@@ -88,55 +88,61 @@ using VDS.RDF.Query;
 using VDS.RDF.Storage;
 using VDS.RDF.Writing;
 
+var dataDir = args.Length > 0 ? args[0] : "./quadstore-data";
+var qs = new QuadStore(dataDir);
+var provider = new QuadStoreStorageProvider(qs);
+var queryable = (IQueryableStorage)provider;
+
+// ---------------------------------------------------------------------------
+// Section B: Seed Data
+// ---------------------------------------------------------------------------
+// On first run (empty store), load a small set of FOAF triples so the sample
+// can be queried immediately without manual data loading.
+
+if (!qs.Query().Any())
+{
+    var seedTriG = """
+        @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+        @prefix ex:   <http://example.org/> .
+
+        {
+          ex:alice foaf:name "Alice" ;
+                   foaf:knows ex:bob .
+          ex:bob   foaf:name "Bob" ;
+                   foaf:knows ex:alice .
+        }
+        """;
+
+    var loader = new SinglePassTrigLoader(qs);
+    loader.LoadFromString(seedTriG);
+    qs.SaveAll();
+}
+
+// ---------------------------------------------------------------------------
+// Section C: Host Configuration
+// ---------------------------------------------------------------------------
+// Build the ASP.NET Core minimal API host and register QuadStore and its
+// storage provider as singletons so they are available to the request pipeline.
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton(qs);
+builder.Services.AddSingleton(provider);
+builder.Services.AddSingleton<IQueryableStorage>(provider);
+
 var app = builder.Build();
 
-var quadStore = new QuadStore("./store-data");
-var provider = new QuadStoreStorageProvider(quadStore);
-var queryable = (IQueryableStorage)provider;
-const int maxSparqlQueryLength = 100_000; // tune for your deployment
+app.MapSparqlEndpoints();
 
-app.MapGet("/sparql", (HttpContext http) =>
+// ---------------------------------------------------------------------------
+// Section G: Shutdown
+// ---------------------------------------------------------------------------
+// Dispose the QuadStore when the application is stopping to release
+// memory-mapped file handles cleanly.
+
+app.Lifetime.ApplicationStopping.Register(() =>
 {
-    var sparql = http.Request.Query["query"].ToString();
-    if (string.IsNullOrWhiteSpace(sparql))
-    {
-        return Results.BadRequest("Missing 'query' parameter.");
-    }
-    if (sparql.Length > maxSparqlQueryLength)
-    {
-        return Results.BadRequest("Query too large.");
-    }
-
-    object result;
-    try
-    {
-        result = queryable.Query(sparql);
-    }
-    catch (RdfQueryException ex)
-    {
-        return Results.BadRequest($"Invalid SPARQL query: {ex.Message}");
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"SPARQL execution failed: {ex.Message}");
-    }
-
-    if (result is SparqlResultSet set)
-    {
-        var sw = new StringWriter();
-        new SparqlJsonWriter().Save(set, sw);
-        return Results.Text(sw.ToString(), "application/sparql-results+json");
-    }
-
-    if (result is IGraph graph)
-    {
-        var sw = new StringWriter();
-        new CompressingTurtleWriter().Save(graph, sw);
-        return Results.Text(sw.ToString(), "text/turtle");
-    }
-
-    return Results.Problem("Unsupported SPARQL result type.");
+    qs.Dispose();
 });
 
 app.Run();
