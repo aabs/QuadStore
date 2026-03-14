@@ -12,10 +12,9 @@
 
 ✨ **Sub-microsecond queries** — Indexed lookups in <200ns (faster than most in-memory operations)  
 🎯 **Batch load 1M triples in 3.65 seconds** — 274K triples/sec throughput  
-🧩 **Zero external RDF dependencies** — Just ANTLR parser and bitmap indexes  
-📦 **Lightweight** — TriG loading without the bloat of external RDF libraries  
-🔍 **SPARQL support** — Basic graph pattern matching and variable binding  
-✅ **Production-tested** — 114+ passing tests, W3C TriG compliance  
+📦 **Lightweight** — TriG loading without need for external RDF libraries  
+🔍 **SPARQL support** — Full graph pattern matching and variable binding  
+✅ **Well tested** — 200+ passing tests, W3C TriG compliance  
 
 
 ## 🚀 Quick Start
