@@ -1,6 +1,6 @@
 # ⚡ QuadStore
 
-> A **blazingly fast**, lightweight RDF quad store for .NET 10 — zero external dependencies, pure performance.
+> A **blazingly fast**, lightweight RDF quad store for .NET 10 — minimal dependencies, pure performance.
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Tests Passing](https://img.shields.io/badge/tests-114%2F116%20passing-brightgreen)
