@@ -7,7 +7,6 @@
 ![.NET Version](https://img.shields.io/badge/.NET-10.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
----
 
 ## 🌟 Why QuadStore?
 
@@ -18,7 +17,6 @@
 🔍 **SPARQL support** — Basic graph pattern matching and variable binding  
 ✅ **Production-tested** — 114+ passing tests, W3C TriG compliance  
 
----
 
 ## 🚀 Quick Start
 
@@ -181,8 +179,6 @@ QuadStore + `QuadStoreStorageProvider` is intentionally append-only currently:
 
 *Benchmarks on Intel Core Ultra 7 265H, .NET 10.0. See [detailed benchmark analysis](benchmark/2025-12-07_SinglePassTrigLoader_benchmark_results.md) for all metrics.*
 
----
-
 ## 🛠️ Installation
 
 QuadStore is built for **.NET 10.0** and ships as a library. Add it to your project:
@@ -195,63 +191,10 @@ dotnet add package QuadStore.Core
 For now, clone and reference locally:
 
 ```bash
-git clone https://github.com/your-org/triple_store.git
+git clone https://github.com/aabs/QuadStore.git
 # Add project reference in your .csproj:
 # <ProjectReference Include="path/to/src/TripleStore.Core/TripleStore.Core.csproj" />
 ```
-
----
-
-## ℹ️ Overview
-
-QuadStore is a **minimal, performant in-memory RDF quad store** for .NET applications that need to:
-
-- 🏪 **Load and query RDF data** without bloated libraries
-- ⚡ **Get nanosecond-level query latency** on indexed operations
-- 📈 **Scale from thousands to millions of triples** efficiently
-- 🎓 **Understand their RDF pipeline** with clean, transparent code
-
-Built from the ground up with **bitmap indexing** and **direct-to-store TriG parsing** (via ANTLR), it eliminates the overhead of external RDF libraries while delivering production-grade performance.
-
-## 🧩 Core Concepts
-
-### Quads & Graphs
-
-QuadStore extends the RDF triple (subject, predicate, object) with a **fourth element: graph**. This allows you to partition data logically:
-
-```csharp
-// A quad: subject, predicate, object, graph
-var quad = new Quad(
-    subject: new Uri("http://example.org/alice"),
-    predicate: new Uri("http://example.org/knows"),
-    @object: new Uri("http://example.org/bob"),
-    graph: new Uri("http://example.org/social-graph")
-);
-```
-
-### Pattern-Based Querying
-
-QuadStore offers two query modes:
-
-1. **SPARQL queries** — Full SELECT queries with WHERE clauses (recommended)
-   ```csharp
-   var sparql = @"
-       SELECT ?person ?name
-       WHERE {
-           ?person <http://xmlns.com/foaf/0.1/name> ?name .
-           ?person <http://xmlns.com/foaf/0.1/knows> ?friend .
-       }
-   ";
-   var results = engine.ExecuteQuery(sparql);
-   ```
-
-2. **Basic graph patterns** — Direct pattern matching for low-level operations
-   ```csharp
-   var results = engine.ExecuteBasicGraphPattern(new[] {
-       ("?person", "http://xmlns.com/foaf/0.1/name", "?name"),
-       ("?person", "http://xmlns.com/foaf/0.1/age", "?age")
-   });
-   ```
 
 ### Indexing Strategy
 
@@ -271,16 +214,6 @@ Multi-dimensional queries use **two-pointer intersection** over sorted result se
 - [Test Suite](test/TripleStore.Tests/) — Working examples of every operation
 - [TriG Spec](https://www.w3.org/TR/trig/) — Supported data format
 
-## ✅ Features
-
-- ✅ **W3C TriG support** — Single-pass ANTLR-based parser, no external dependencies
-- ✅ **Named graphs** — Full quad (subject, predicate, object, graph) support
-- ✅ **Bitmap indexing** — Roaring bitmaps for O(1) dimensional lookups
-- ✅ **Basic SPARQL engine** — Pattern matching, variable binding, basic graph patterns
-- ✅ **Bulk loading** — 274K+ triples/second sustained throughput
-- ✅ **Nanosecond queries** — Sub-200ns for indexed single-dimension lookups
-- ✅ **In-memory + optional persistence** — LightningDB integration available
-- ✅ **Minimal dependencies** — ANTLR and Roaring Bitmap libraries only
 
 ## 🔬 Building & Testing
 
