@@ -353,4 +353,232 @@ public class SparqlServerPropertyTests : IClassFixture<WebApplicationFactory<Pro
                 .Label($"Expected 400 with body for: {query}, got {response.StatusCode}, body empty: {!hasBody}");
         }).QuickCheckThrowOnFailure();
     }
+
+    // =====================================================================
+    // Property 4: SPARQL Update always returns 501
+    // Validates: Requirements 9.8
+    // =====================================================================
+
+    /// <summary>
+    /// Generates random non-empty strings for SPARQL Update bodies.
+    /// Mixes known SPARQL Update syntax with random alphanumeric strings.
+    /// </summary>
+    private static Arbitrary<string> SparqlUpdateBodyArb()
+    {
+        var knownUpdates = new[]
+        {
+            "INSERT DATA { <http://example.org/s> <http://example.org/p> <http://example.org/o> }",
+            "DELETE DATA { <http://example.org/s> <http://example.org/p> <http://example.org/o> }",
+            "DELETE WHERE { ?s ?p ?o }",
+            "CLEAR GRAPH <http://example.org/g>",
+            "DROP ALL",
+            "LOAD <http://example.org/data>",
+            "CREATE GRAPH <http://example.org/new>",
+            "COPY DEFAULT TO <http://example.org/g>",
+            "MOVE <http://example.org/g1> TO <http://example.org/g2>",
+            "ADD DEFAULT TO <http://example.org/g>"
+        };
+
+        var knownGen = Gen.Elements(knownUpdates);
+
+        var alphaChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 {};<>".ToCharArray();
+        var randomGen = Gen.Choose(3, 80)
+            .SelectMany(len =>
+                Gen.ArrayOf(Gen.Elements(alphaChars), len)
+                .Select(chars => new string(chars).Trim()))
+            .Where(s => !string.IsNullOrWhiteSpace(s));
+
+        var gen = Gen.Frequency(
+            (2, knownGen),
+            (3, randomGen));
+
+        return gen.ToArbitrary();
+    }
+
+    /// <summary>
+    /// For any non-empty SPARQL Update string submitted via POST with
+    /// content-type application/sparql-update, the endpoint SHALL return
+    /// HTTP 501 indicating that SPARQL Update is not supported.
+    /// </summary>
+    [Fact]
+    public void Property4_SparqlUpdate_AlwaysReturns501()
+    {
+        Prop.ForAll(SparqlUpdateBodyArb(), (string updateBody) =>
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/sparql")
+            {
+                Content = new StringContent(updateBody, Encoding.UTF8, "application/sparql-update")
+            };
+            var response = _client.SendAsync(request)
+                .GetAwaiter().GetResult();
+
+            var is501 = response.StatusCode == HttpStatusCode.NotImplemented;
+
+            return is501
+                .Label($"Expected 501 for SPARQL Update but got {response.StatusCode} for body: {updateBody}");
+        }).QuickCheckThrowOnFailure();
+    }
+
+    // =====================================================================
+    // Property 5: Graph Store write operations return 501
+    // Validates: Requirements 9.12, 9.13, 9.14
+    // =====================================================================
+
+    /// <summary>
+    /// Generates random graph URIs for Graph Store Protocol requests.
+    /// </summary>
+    private static Arbitrary<string> GraphUriArb()
+    {
+        var knownUris = new[]
+        {
+            "http://example.org/graph1",
+            "http://example.org/graph2",
+            "http://example.org/people",
+            "http://example.org/data",
+            "urn:test:graph",
+            "http://localhost/g"
+        };
+
+        var knownGen = Gen.Elements(knownUris);
+
+        var alphaChars = "abcdefghijklmnopqrstuvwxyz0123456789-_".ToCharArray();
+        var randomGen = Gen.Choose(3, 30)
+            .SelectMany(len =>
+                Gen.ArrayOf(Gen.Elements(alphaChars), len)
+                .Select(chars => $"http://example.org/{new string(chars)}"));
+
+        var gen = Gen.Frequency(
+            (2, knownGen),
+            (3, randomGen));
+
+        return gen.ToArbitrary();
+    }
+
+    /// <summary>
+    /// Generates random non-empty request bodies for Graph Store write operations.
+    /// </summary>
+    private static Arbitrary<string> GraphStoreBodyArb()
+    {
+        var knownBodies = new[]
+        {
+            "<http://example.org/s> <http://example.org/p> <http://example.org/o> .",
+            "@prefix ex: <http://example.org/> . ex:s ex:p ex:o .",
+            "<http://example.org/a> <http://example.org/b> \"hello\" .",
+            "@prefix foaf: <http://xmlns.com/foaf/0.1/> . <http://example.org/alice> foaf:name \"Alice\" ."
+        };
+
+        var knownGen = Gen.Elements(knownBodies);
+
+        var alphaChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 :<>/._\"".ToCharArray();
+        var randomGen = Gen.Choose(5, 80)
+            .SelectMany(len =>
+                Gen.ArrayOf(Gen.Elements(alphaChars), len)
+                .Select(chars => new string(chars).Trim()))
+            .Where(s => !string.IsNullOrWhiteSpace(s));
+
+        var gen = Gen.Frequency(
+            (2, knownGen),
+            (3, randomGen));
+
+        return gen.ToArbitrary();
+    }
+
+    /// <summary>
+    /// For any PUT, POST, or DELETE request to the Graph Store Protocol
+    /// endpoint, the endpoint SHALL return HTTP 501 indicating that the
+    /// operation is not supported by the backend.
+    /// </summary>
+    [Fact]
+    public void Property5_GraphStoreWriteOperations_Return501()
+    {
+        Prop.ForAll(GraphUriArb(), GraphStoreBodyArb(), (string graphUri, string body) =>
+        {
+            var encodedUri = Uri.EscapeDataString(graphUri);
+            var url = $"/sparql/graph?graph={encodedUri}";
+            var content = new StringContent(body, Encoding.UTF8, "text/turtle");
+
+            // PUT
+            var putRequest = new HttpRequestMessage(HttpMethod.Put, url) { Content = content };
+            var putResponse = _client.SendAsync(putRequest).GetAwaiter().GetResult();
+            var putIs501 = putResponse.StatusCode == HttpStatusCode.NotImplemented;
+
+            // POST
+            var postContent = new StringContent(body, Encoding.UTF8, "text/turtle");
+            var postRequest = new HttpRequestMessage(HttpMethod.Post, url) { Content = postContent };
+            var postResponse = _client.SendAsync(postRequest).GetAwaiter().GetResult();
+            var postIs501 = postResponse.StatusCode == HttpStatusCode.NotImplemented;
+
+            // DELETE
+            var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, url);
+            var deleteResponse = _client.SendAsync(deleteRequest).GetAwaiter().GetResult();
+            var deleteIs501 = deleteResponse.StatusCode == HttpStatusCode.NotImplemented;
+
+            return (putIs501 && postIs501 && deleteIs501)
+                .Label($"Expected 501 for all Graph Store writes but got PUT:{putResponse.StatusCode} POST:{postResponse.StatusCode} DELETE:{deleteResponse.StatusCode} for graph: {graphUri}");
+        }).QuickCheckThrowOnFailure();
+    }
+
+    // =====================================================================
+    // Property 6: Graph Store GET returns Turtle content type
+    // Validates: Requirements 9.10
+    // =====================================================================
+
+    /// <summary>
+    /// Generates graph URI options for Graph Store GET requests.
+    /// Produces a mix of: no graph param (empty string), known URIs,
+    /// and random URIs (which return empty but valid Turtle graphs).
+    /// </summary>
+    private static Arbitrary<string> GraphStoreGetUriArb()
+    {
+        var knownUris = new[]
+        {
+            "",  // default graph (no graph param)
+            "http://example.org/graph1",
+            "http://example.org/people",
+            "http://example.org/data",
+            "urn:test:graph",
+            "urn:x-arq:DefaultGraph",
+            "http://example.org/nonexistent"
+        };
+
+        var knownGen = Gen.Elements(knownUris);
+
+        var alphaChars = "abcdefghijklmnopqrstuvwxyz0123456789-_".ToCharArray();
+        var randomGen = Gen.Choose(3, 30)
+            .SelectMany(len =>
+                Gen.ArrayOf(Gen.Elements(alphaChars), len)
+                .Select(chars => $"http://example.org/{new string(chars)}"));
+
+        var gen = Gen.Frequency(
+            (3, knownGen),
+            (2, randomGen));
+
+        return gen.ToArbitrary();
+    }
+
+    /// <summary>
+    /// For any HTTP GET request to the Graph Store Protocol endpoint,
+    /// the response status SHALL be 200 and the content-type SHALL be
+    /// text/turtle — regardless of whether the graph contains data
+    /// (an empty graph is still valid Turtle).
+    /// </summary>
+    [Fact]
+    public void Property6_GraphStoreGet_ReturnsTurtleContentType()
+    {
+        Prop.ForAll(GraphStoreGetUriArb(), (string graphUri) =>
+        {
+            var url = string.IsNullOrEmpty(graphUri)
+                ? "/sparql/graph"
+                : $"/sparql/graph?graph={Uri.EscapeDataString(graphUri)}";
+
+            var response = _client.GetAsync(url).GetAwaiter().GetResult();
+
+            var is200 = response.StatusCode == HttpStatusCode.OK;
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+            var isTurtle = contentType == "text/turtle";
+
+            return (is200 && isTurtle)
+                .Label($"Expected 200 text/turtle but got {response.StatusCode} {contentType} for graph: '{graphUri}'");
+        }).QuickCheckThrowOnFailure();
+    }
 }

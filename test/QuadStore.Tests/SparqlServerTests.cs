@@ -217,4 +217,156 @@ public class SparqlServerTests : IClassFixture<WebApplicationFactory<Program>>
             .GetProperty("bindings");
         bindings.GetArrayLength().Should().BeGreaterThan(0);
     }
+
+    // -----------------------------------------------------------------
+    // 9.7  SPARQL Update POST with empty body → 400
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Post_SparqlUpdate_EmptyBody_Returns400()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/sparql")
+        {
+            Content = new StringContent(string.Empty, Encoding.UTF8, "application/sparql-update")
+        };
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // -----------------------------------------------------------------
+    // 9.8  SPARQL Update POST with non-empty body → 501
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Post_SparqlUpdate_NonEmptyBody_Returns501()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/sparql")
+        {
+            Content = new StringContent(
+                "INSERT DATA { <http://example.org/s> <http://example.org/p> <http://example.org/o> . }",
+                Encoding.UTF8,
+                "application/sparql-update")
+        };
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+    }
+
+    // -----------------------------------------------------------------
+    // 9.10  Graph Store GET with named graph → 200 + text/turtle
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Get_GraphStore_NamedGraph_Returns200_WithTurtleContentType()
+    {
+        var graphUri = Uri.EscapeDataString("urn:x-arq:DefaultGraph");
+
+        var response = await _client.GetAsync($"/sparql/graph?graph={graphUri}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType
+            .Should().StartWith("text/turtle");
+    }
+
+    // -----------------------------------------------------------------
+    // 9.11  Graph Store GET without graph param (default graph) → 200 + text/turtle
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Get_GraphStore_DefaultGraph_Returns200_WithTurtleContentType()
+    {
+        var response = await _client.GetAsync("/sparql/graph");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType
+            .Should().StartWith("text/turtle");
+    }
+
+    // -----------------------------------------------------------------
+    // 9.12  Graph Store PUT → 501
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Put_GraphStore_Returns501()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, "/sparql/graph")
+        {
+            Content = new StringContent(
+                "<http://example.org/s> <http://example.org/p> <http://example.org/o> .",
+                Encoding.UTF8,
+                "text/turtle")
+        };
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+    }
+
+    // -----------------------------------------------------------------
+    // 9.13  Graph Store POST → 501
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Post_GraphStore_Returns501()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/sparql/graph")
+        {
+            Content = new StringContent(
+                "<http://example.org/s> <http://example.org/p> <http://example.org/o> .",
+                Encoding.UTF8,
+                "text/turtle")
+        };
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+    }
+
+    // -----------------------------------------------------------------
+    // 9.14  Graph Store DELETE → 501
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Delete_GraphStore_Returns501()
+    {
+        var response = await _client.DeleteAsync("/sparql/graph");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+    }
+
+    // -----------------------------------------------------------------
+    // 9.4  ASK query → 200 + application/sparql-results+json
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Get_AskQuery_Returns200_WithJsonContentType()
+    {
+        var query = Uri.EscapeDataString("ASK { ?s ?p ?o }");
+
+        var response = await _client.GetAsync($"/sparql?query={query}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType
+            .Should().StartWith("application/sparql-results+json");
+    }
+
+    // -----------------------------------------------------------------
+    // 9.3  DESCRIBE query → 200 + text/turtle
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Get_DescribeQuery_Returns200_WithTurtleContentType()
+    {
+        var query = Uri.EscapeDataString(
+            "DESCRIBE <http://example.org/alice>");
+
+        var response = await _client.GetAsync($"/sparql?query={query}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType
+            .Should().StartWith("text/turtle");
+    }
 }
