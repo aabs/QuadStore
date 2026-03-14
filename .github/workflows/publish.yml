@@ -1,0 +1,47 @@
+name: Publish NuGet Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore QuadStore.sln
+
+      - name: Build
+        run: dotnet build QuadStore.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test QuadStore.sln -c Release --no-build --nologo
+
+      - name: Extract version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Pack QuadStore.Core
+        run: dotnet pack src/QuadStore.Core/QuadStore.Core.csproj -c Release --no-build /p:Version=${{ env.VERSION }} -o ./nupkgs
+
+      - name: Pack QuadStore.SparqlServer
+        run: dotnet pack src/QuadStore.SparqlServer/QuadStore.SparqlServer.csproj -c Release --no-build /p:Version=${{ env.VERSION }} -o ./nupkgs
+
+      - name: Publish to NuGet
+        run: dotnet nuget push ./nupkgs/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate

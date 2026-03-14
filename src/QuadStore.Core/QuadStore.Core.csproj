@@ -7,6 +7,20 @@
 	  <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>QuadStore.Core</PackageId>
+    <Authors>aabs</Authors>
+    <Description>A high-performance, lightweight in-memory RDF quad store for .NET with roaring bitmap indexes, single-pass TriG loading, and SPARQL support.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/aabs/QuadStore</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/aabs/QuadStore</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
     <PackageReference Include="dotNetRDF" Version="3.4.1" />

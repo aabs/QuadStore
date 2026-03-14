@@ -5,8 +5,20 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
+  <PropertyGroup>
+    <PackageId>QuadStore.SparqlServer</PackageId>
+    <Authors>aabs</Authors>
+    <Description>ASP.NET Core SPARQL Protocol endpoint for QuadStore.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/aabs/QuadStore</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/aabs/QuadStore</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="..\QuadStore.Core\QuadStore.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>
