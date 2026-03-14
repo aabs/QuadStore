@@ -88,3 +88,7 @@ app.Run();
 // to discover the entry point from the test project.
 // ---------------------------------------------------------------------------
 public partial class Program { }
+
+/*
+ * http://localhost:5000/sparql?query=SELECT%20%3Fs%20%3Fp%20%3Fo%20WHERE%20%7B%20%3Fs%20%3Fp%20%3Fo%20%7D
+ */ 
