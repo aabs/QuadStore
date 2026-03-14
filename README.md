@@ -3,7 +3,7 @@
 > A **blazingly fast**, lightweight RDF quad store for .NET 10 — minimal dependencies, pure performance.
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Tests Passing](https://img.shields.io/badge/tests-114%2F116%20passing-brightgreen)
+![Tests Passing](https://img.shields.io/badge/tests-201%2F201%20passing-brightgreen)
 ![.NET Version](https://img.shields.io/badge/.NET-10.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
