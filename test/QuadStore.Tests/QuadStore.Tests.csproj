@@ -41,7 +41,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\QuadStore.Core\QuadStore.Core.csproj" />
-    <ProjectReference Include="..\..\src\QuadStore.Storage\QuadStore.Storage.csproj" />
     <ProjectReference Include="..\..\src\QuadStore.SparqlServer\QuadStore.SparqlServer.csproj" />
     <ProjectReference Include="..\..\samples\SparqlServerOverMinimalApi\SparqlServerOverMinimalApi.csproj" />
   </ItemGroup>
