@@ -24,6 +24,18 @@ public sealed class BitmapIndex
         bm.Add((uint)row);
     }
 
+    /// <summary>
+    /// Remove a row ID from the bitmap for the given dictionary ID.
+    /// No-op if the dictionary ID does not exist or the row is not in the bitmap.
+    /// </summary>
+    public void Remove(int dictId, long row)
+    {
+        if (_bitmaps.TryGetValue(dictId, out var bm))
+        {
+            bm.Remove((uint)row);
+        }
+    }
+
     public IEnumerable<long> GetRows(int dictId)
     {
         if (_bitmaps.TryGetValue(dictId, out var bm))
