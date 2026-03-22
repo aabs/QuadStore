@@ -4,12 +4,13 @@ namespace TripleStore.Core;
 
 /// <summary>
 /// Quad Store with columnar storage, dictionary encoding, bitmap indexing, and memory-mapped persistence.
-/// Design goals: high-throughput append, efficient equality queries via bitmap intersections, atomic persistence.
+/// Design goals: high-throughput append and delete, efficient equality queries via bitmap intersections, atomic persistence.
 /// Notes:
 /// - Columns persist int IDs (dictionary-encoded) in separate memory-mapped files.
 /// - Dictionary persisted to a binary file with version and count; atomic replace via temp file.
 /// - BitmapIndex maps dictId → sorted set of rowIds; intersection used for multi-criteria filters.
-/// - ReaderWriterLockSlim guards concurrent appends and queries.
+/// - Deletions use tombstone-based soft delete; deleted row IDs are tracked and excluded from queries.
+/// - ReaderWriterLockSlim guards concurrent appends, deletes, and queries.
 /// - This implementation avoids external roaring bitmap dependency by using compact sorted sets.
 /// </summary>
 public sealed class QuadStore : IDisposable
@@ -31,6 +32,7 @@ public sealed class QuadStore : IDisposable
     private readonly BitmapIndex _idxG;
 
     private long _rowCount;
+    private readonly HashSet<long> _tombstones = new();
 
     public QuadStore(string rootPath)
     {
@@ -204,6 +206,9 @@ public sealed class QuadStore : IDisposable
             // Materialize results
             foreach (var r in rows)
             {
+                if (_tombstones.Contains(r))
+                    continue;
+
                 int si = _s.Read(r);
                 int pi = _p.Read(r);
                 int oi = _o.Read(r);
@@ -236,6 +241,22 @@ public sealed class QuadStore : IDisposable
             _idxO.Save();
             _idxG.Save();
             // row count persisted via column file lengths
+
+            // Persist tombstones
+            var tombstonePath = Path.Combine(_root, "tombstones.bin");
+            var sorted = new long[_tombstones.Count];
+            _tombstones.CopyTo(sorted);
+            Array.Sort(sorted);
+            using (var fs = new FileStream(tombstonePath, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var bw = new BinaryWriter(fs))
+            {
+                bw.Write((int)1);           // version
+                bw.Write(sorted.Length);     // count
+                for (int i = 0; i < sorted.Length; i++)
+                {
+                    bw.Write(sorted[i]);     // int64 rowId
+                }
+            }
         }
         finally
         {
@@ -262,6 +283,95 @@ public sealed class QuadStore : IDisposable
             _idxG.Load();
 
             _rowCount = Math.Min(Math.Min(_s.Length, _p.Length), Math.Min(_o.Length, _g.Length));
+
+            // Restore tombstones
+            _tombstones.Clear();
+            var tombstonePath = Path.Combine(_root, "tombstones.bin");
+            if (File.Exists(tombstonePath))
+            {
+                using var fs = new FileStream(tombstonePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                using var br = new BinaryReader(fs);
+                var version = br.ReadInt32();   // version (currently 1)
+                var count = br.ReadInt32();
+                for (int i = 0; i < count; i++)
+                {
+                    _tombstones.Add(br.ReadInt64());
+                }
+            }
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// Delete all quads matching the given pattern. Null components act as wildcards.
+    /// Returns the number of quads deleted.
+    /// </summary>
+    public int Delete(string? subject = null, string? predicate = null, string? obj = null, string? graph = null)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            // Resolve each non-null filter to its encoded ID.
+            // If a value isn't in the dictionary, no rows can match.
+            int sid = -1, pid = -1, oid = -1, gid = -1;
+
+            if (subject is not null)
+            {
+                if (!_encoder.TryGet(subject, out sid))
+                    return 0;
+            }
+            if (predicate is not null)
+            {
+                if (!_encoder.TryGet(predicate, out pid))
+                    return 0;
+            }
+            if (obj is not null)
+            {
+                if (!_encoder.TryGet(obj, out oid))
+                    return 0;
+            }
+            if (graph is not null)
+            {
+                if (!_encoder.TryGet(graph, out gid))
+                    return 0;
+            }
+
+            int deleted = 0;
+
+            for (long row = 0; row < _rowCount; row++)
+            {
+                if (_tombstones.Contains(row))
+                    continue;
+
+                if (subject is not null && _s.Read(row) != sid)
+                    continue;
+                if (predicate is not null && _p.Read(row) != pid)
+                    continue;
+                if (obj is not null && _o.Read(row) != oid)
+                    continue;
+                if (graph is not null && _g.Read(row) != gid)
+                    continue;
+
+                // Row matches — tombstone it and remove from all four indexes
+                _tombstones.Add(row);
+
+                int rs = _s.Read(row);
+                int rp = _p.Read(row);
+                int ro = _o.Read(row);
+                int rg = _g.Read(row);
+
+                _idxS.Remove(rs, row);
+                _idxP.Remove(rp, row);
+                _idxO.Remove(ro, row);
+                _idxG.Remove(rg, row);
+
+                deleted++;
+            }
+
+            return deleted;
         }
         finally
         {

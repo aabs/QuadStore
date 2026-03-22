@@ -1,12 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 using VDS.RDF.Query;
 using VDS.RDF.Query.Datasets;
+using VDS.RDF.Query.Patterns;
 using VDS.RDF.Storage;
 using VDS.RDF.Storage.Management;
+using VDS.RDF.Update;
+using VDS.RDF.Update.Commands;
 
 namespace TripleStore.Core;
 
@@ -18,13 +18,15 @@ namespace TripleStore.Core;
 /// <para>This implementation maps dotNetRDF storage operations to QuadStore's underlying
 /// columnar bitmap store. Quad support is enabled: named graphs are surfaced as required
 /// by dotNetRDF.</para>
-/// <para><b>Limitations:</b></para>
+/// <para><b>Supported operations:</b></para>
 /// <list type="bullet">
-///   <item><description>Graph deletion is not supported (QuadStore is append-only).</description></item>
+///   <item><description>Graph deletion via <see cref="DeleteGraph(Uri)"/> and
+///   <see cref="DeleteGraph(string)"/> using tombstone-based soft delete.</description></item>
 ///   <item><description>Triple removal via
-///   <see cref="UpdateGraph(IRefNode, IEnumerable{Triple}, IEnumerable{Triple})"/> is not supported.
-///   </description></item>
-///   <item><description>SPARQL Update via <see cref="Update"/> is not supported.</description></item>
+///   <see cref="UpdateGraph(IRefNode, IEnumerable{Triple}, IEnumerable{Triple})"/> with both
+///   additions and removals (removals processed before additions).</description></item>
+///   <item><description>SPARQL 1.1 Update via <see cref="Update"/>: INSERT DATA, DELETE DATA,
+///   DELETE/INSERT WHERE, DROP, and CLEAR commands.</description></item>
 /// </list>
 /// </remarks>
 /// <example>
@@ -44,19 +46,14 @@ namespace TripleStore.Core;
 /// var results = (SparqlResultSet)queryProvider.Query("SELECT * WHERE { ?s ?p ?o }");
 /// </code>
 /// </example>
-public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStorage, IUpdateableStorage
+/// <remarks>
+/// Initializes a new instance of <see cref="QuadStoreStorageProvider"/>.
+/// </remarks>
+/// <param name="store">The underlying <see cref="QuadStore"/> instance.</param>
+/// <exception cref="ArgumentNullException">Thrown when <paramref name="store"/> is null.</exception>
+public sealed class QuadStoreStorageProvider(QuadStore store) : IStorageProvider, IQueryableStorage, IUpdateableStorage
 {
-    private readonly QuadStore _store;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="QuadStoreStorageProvider"/>.
-    /// </summary>
-    /// <param name="store">The underlying <see cref="QuadStore"/> instance.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="store"/> is null.</exception>
-    public QuadStoreStorageProvider(QuadStore store)
-    {
-        _store = store ?? throw new ArgumentNullException(nameof(store));
-    }
+    private readonly QuadStore _store = store ?? throw new ArgumentNullException(nameof(store));
 
     // ── IStorageCapabilities ────────────────────────────────────────────────
 
@@ -72,15 +69,16 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
         IOBehaviour.HasNamedGraphs |
         IOBehaviour.HasDefaultGraph |
         IOBehaviour.AppendTriples |
-        IOBehaviour.CanUpdateAddTriples;
+        IOBehaviour.CanUpdateAddTriples |
+        IOBehaviour.CanUpdateDeleteTriples;
 
     /// <inheritdoc/>
     public bool UpdateSupported => true;
 
     /// <summary>
-    /// Returns <see langword="false"/>. QuadStore is append-only and does not support graph deletion.
+    /// Returns <see langword="true"/>. QuadStore supports graph deletion via tombstone-based soft delete.
     /// </summary>
-    public bool DeleteSupported => false;
+    public bool DeleteSupported => true;
 
     /// <inheritdoc/>
     public bool ListGraphsSupported => true;
@@ -95,7 +93,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <inheritdoc/>
     public void LoadGraph(IGraph g, Uri graphUri)
     {
-        if (g == null) throw new ArgumentNullException(nameof(g));
+        ArgumentNullException.ThrowIfNull(g);
         LoadGraphInternal(g, graphUri?.AbsoluteUri);
         if (graphUri != null)
             g.BaseUri = graphUri;
@@ -104,7 +102,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <inheritdoc/>
     public void LoadGraph(IGraph g, string graphUri)
     {
-        if (g == null) throw new ArgumentNullException(nameof(g));
+        ArgumentNullException.ThrowIfNull(g);
         LoadGraphInternal(g, graphUri);
         var normalised = graphUri != null ? NormaliseGraphUri(graphUri) : null;
         if (normalised != null && Uri.TryCreate(normalised, UriKind.Absolute, out var uri))
@@ -114,14 +112,14 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <inheritdoc/>
     public void LoadGraph(IRdfHandler handler, Uri graphUri)
     {
-        if (handler == null) throw new ArgumentNullException(nameof(handler));
+        ArgumentNullException.ThrowIfNull(handler);
         LoadGraphHandlerInternal(handler, graphUri?.AbsoluteUri);
     }
 
     /// <inheritdoc/>
     public void LoadGraph(IRdfHandler handler, string graphUri)
     {
-        if (handler == null) throw new ArgumentNullException(nameof(handler));
+        ArgumentNullException.ThrowIfNull(handler);
         LoadGraphHandlerInternal(handler, graphUri);
     }
 
@@ -133,8 +131,8 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// </remarks>
     public void SaveGraph(IGraph g)
     {
-        if (g == null) throw new ArgumentNullException(nameof(g));
-        string graphUri = g.Name is IUriNode uriNode
+        ArgumentNullException.ThrowIfNull(g);
+        var graphUri = g.Name is IUriNode uriNode
             ? uriNode.Uri.AbsoluteUri
             : g.BaseUri?.AbsoluteUri ?? string.Empty;
 
@@ -149,40 +147,55 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     }
 
     /// <inheritdoc/>
-    /// <remarks>Removals are not supported; pass <see langword="null"/> or an empty collection.</remarks>
+    /// <remarks>
+    /// Both additions and removals are supported. Removals are processed before additions,
+    /// following SPARQL Update semantics. Non-existent removal triples are silently skipped.
+    /// </remarks>
     public void UpdateGraph(IRefNode graphName, IEnumerable<Triple> additions, IEnumerable<Triple> removals)
     {
-        string graphUri = graphName is IUriNode un ? un.Uri.AbsoluteUri : string.Empty;
+        var graphUri = graphName is IUriNode un ? un.Uri.AbsoluteUri : string.Empty;
         UpdateGraphInternal(graphUri, additions, removals);
     }
 
     /// <inheritdoc/>
-    /// <remarks>Removals are not supported; pass <see langword="null"/> or an empty collection.</remarks>
+    /// <remarks>
+    /// Both additions and removals are supported. Removals are processed before additions,
+    /// following SPARQL Update semantics. Non-existent removal triples are silently skipped.
+    /// </remarks>
     public void UpdateGraph(Uri graphUri, IEnumerable<Triple> additions, IEnumerable<Triple> removals)
     {
         UpdateGraphInternal(graphUri?.AbsoluteUri ?? string.Empty, additions, removals);
     }
 
     /// <inheritdoc/>
-    /// <remarks>Removals are not supported; pass <see langword="null"/> or an empty collection.</remarks>
+    /// <remarks>
+    /// Both additions and removals are supported. Removals are processed before additions,
+    /// following SPARQL Update semantics. Non-existent removal triples are silently skipped.
+    /// </remarks>
     public void UpdateGraph(string graphUri, IEnumerable<Triple> additions, IEnumerable<Triple> removals)
     {
         UpdateGraphInternal(graphUri ?? string.Empty, additions, removals);
     }
 
-    /// <summary>
-    /// Not supported. QuadStore is append-only and does not support graph deletion.
-    /// </summary>
-    /// <exception cref="RdfStorageException">Always thrown.</exception>
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Deletes all quads in the specified named graph. If <paramref name="graphUri"/> is
+    /// <see langword="null"/>, deletes quads in the default graph.
+    /// </remarks>
     public void DeleteGraph(Uri graphUri)
-        => throw new RdfStorageException("QuadStore is append-only and does not support graph deletion.");
+    {
+        DeleteGraphInternal(graphUri?.AbsoluteUri ?? string.Empty);
+    }
 
-    /// <summary>
-    /// Not supported. QuadStore is append-only and does not support graph deletion.
-    /// </summary>
-    /// <exception cref="RdfStorageException">Always thrown.</exception>
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Deletes all quads in the specified named graph. If <paramref name="graphUri"/> is
+    /// <see langword="null"/> or empty, deletes quads in the default graph.
+    /// </remarks>
     public void DeleteGraph(string graphUri)
-        => throw new RdfStorageException("QuadStore is append-only and does not support graph deletion.");
+    {
+        DeleteGraphInternal(graphUri);
+    }
 
     /// <inheritdoc/>
     public IEnumerable<Uri> ListGraphs()
@@ -216,7 +229,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="sparqlQuery"/> is null.</exception>
     public object Query(string sparqlQuery)
     {
-        if (sparqlQuery == null) throw new ArgumentNullException(nameof(sparqlQuery));
+        ArgumentNullException.ThrowIfNull(sparqlQuery);
         var processor = CreateQueryProcessor();
         var query = new SparqlQueryParser().ParseFromString(sparqlQuery);
         return processor.ProcessQuery(query);
@@ -232,7 +245,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="sparqlQuery"/> is null.</exception>
     public void Query(IRdfHandler rdfHandler, ISparqlResultsHandler resultsHandler, string sparqlQuery)
     {
-        if (sparqlQuery == null) throw new ArgumentNullException(nameof(sparqlQuery));
+        ArgumentNullException.ThrowIfNull(sparqlQuery);
         var processor = CreateQueryProcessor();
         var query = new SparqlQueryParser().ParseFromString(sparqlQuery);
         processor.ProcessQuery(rdfHandler, resultsHandler, query);
@@ -241,14 +254,59 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     // ── IUpdateableStorage ──────────────────────────────────────────────────
 
     /// <summary>
-    /// Not supported. QuadStore is append-only; use <see cref="SaveGraph"/> or
-    /// <see cref="UpdateGraph(Uri, IEnumerable{Triple}, IEnumerable{Triple})"/> to add triples.
+    /// Executes a SPARQL Update command string against the store.
+    /// Supports INSERT DATA, DELETE DATA, DELETE/INSERT WHERE, DROP, and CLEAR commands.
     /// </summary>
-    /// <exception cref="RdfStorageException">Always thrown.</exception>
+    /// <param name="sparqlUpdate">The SPARQL Update command string.</param>
+    /// <exception cref="RdfStorageException">
+    /// Thrown when the command string contains invalid syntax or an unsupported command type.
+    /// </exception>
     public void Update(string sparqlUpdate)
-        => throw new RdfStorageException(
-            "QuadStore does not support SPARQL Update (append-only store). " +
-            "Use SaveGraph or UpdateGraph to add triples.");
+    {
+        SparqlUpdateCommandSet commandSet;
+        try
+        {
+            var parser = new SparqlUpdateParser();
+            commandSet = parser.ParseFromString(sparqlUpdate);
+        }
+        catch (Exception ex)
+        {
+            throw new RdfStorageException("Failed to parse SPARQL Update: " + ex.Message, ex);
+        }
+
+        for (var i = 0; i < commandSet.CommandCount; i++)
+        {
+            var cmd = commandSet[i];
+            switch (cmd)
+            {
+                case InsertDataCommand insertData:
+                    ProcessInsertData(insertData);
+                    break;
+                case DeleteDataCommand deleteData:
+                    ProcessDeleteData(deleteData);
+                    break;
+                case ModifyCommand modify:
+                    ProcessModify(modify);
+                    break;
+                case DeleteCommand delete:
+                    ProcessDeleteWhere(delete);
+                    break;
+                case InsertCommand insert:
+                    ProcessInsertWhere(insert);
+                    break;
+                case DropCommand drop:
+                    ProcessDropOrClear(drop.Mode, drop.TargetGraphName, drop.Silent);
+                    break;
+                case ClearCommand clear:
+                    ProcessDropOrClear(clear.Mode, clear.TargetGraphName, clear.Silent);
+                    break;
+                default:
+                    throw new RdfStorageException(
+                        $"Unsupported SPARQL Update command type: {cmd.CommandType}. " +
+                        "Supported commands: INSERT DATA, DELETE DATA, DELETE/INSERT WHERE, DROP, CLEAR.");
+            }
+        }
+    }
 
     // ── IDisposable ─────────────────────────────────────────────────────────
 
@@ -261,7 +319,320 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
         // QuadStore lifecycle is managed externally; nothing to dispose here.
     }
 
+    // ── SPARQL Update helpers ──────────────────────────────────────────────
+
+    private void ProcessInsertData(InsertDataCommand cmd)
+    {
+        var pattern = cmd.DataPattern;
+
+        if (pattern.IsGraph)
+        {
+            // Single GRAPH clause: DataPattern itself is the graph pattern
+            var graphUri = pattern.GraphSpecifier.Value;
+            foreach (var tp in pattern.TriplePatterns.OfType<IConstructTriplePattern>())
+            {
+                AppendTriplePattern(tp, graphUri);
+            }
+            return;
+        }
+
+        // Default graph triples (no GRAPH clause)
+        foreach (var tp in pattern.TriplePatterns.OfType<IConstructTriplePattern>())
+        {
+            AppendTriplePattern(tp, string.Empty);
+        }
+
+        // GRAPH-scoped triples (mixed default + GRAPH clauses)
+        foreach (var childPattern in pattern.ChildGraphPatterns)
+        {
+            if (!childPattern.IsGraph) continue;
+            var graphUri = childPattern.GraphSpecifier.Value;
+            foreach (var tp in childPattern.TriplePatterns.OfType<IConstructTriplePattern>())
+            {
+                AppendTriplePattern(tp, graphUri);
+            }
+        }
+    }
+
+    private void ProcessDeleteData(DeleteDataCommand cmd)
+    {
+        var pattern = cmd.DataPattern;
+
+        if (pattern.IsGraph)
+        {
+            // Single GRAPH clause: DataPattern itself is the graph pattern
+            var graphUri = pattern.GraphSpecifier.Value;
+            foreach (var tp in pattern.TriplePatterns.OfType<IConstructTriplePattern>())
+            {
+                DeleteTriplePattern(tp, graphUri);
+            }
+            return;
+        }
+
+        // Default graph triples (no GRAPH clause)
+        foreach (var tp in pattern.TriplePatterns.OfType<IConstructTriplePattern>())
+        {
+            DeleteTriplePattern(tp, string.Empty);
+        }
+
+        // GRAPH-scoped triples (mixed default + GRAPH clauses)
+        foreach (var childPattern in pattern.ChildGraphPatterns)
+        {
+            if (!childPattern.IsGraph) continue;
+            var graphUri = childPattern.GraphSpecifier.Value;
+            foreach (var tp in childPattern.TriplePatterns.OfType<IConstructTriplePattern>())
+            {
+                DeleteTriplePattern(tp, graphUri);
+            }
+        }
+    }
+
+    private void ProcessModify(ModifyCommand cmd)
+    {
+        // 1. Build a snapshot dataset and evaluate the WHERE pattern to collect bindings
+        var processor = CreateQueryProcessor();
+        var query = new SparqlQueryParser().ParseFromString("SELECT * WHERE " + cmd.WherePattern);
+        var result = processor.ProcessQuery(query);
+
+        if (result is not SparqlResultSet resultSet || resultSet.Count == 0)
+            return;
+
+        // 2. Snapshot: collect all bindings before applying any changes
+        var bindings = resultSet.Results.ToList();
+
+        // 3. Determine the target graph URI (from WITH clause, if any)
+        var targetGraph = cmd.TargetGraph is IUriNode uriNode
+            ? uriNode.Uri.AbsoluteUri
+            : string.Empty;
+
+        // 4. Apply DELETE template: for each binding, instantiate and delete
+        foreach (var binding in bindings)
+        {
+            InstantiateAndDelete(cmd.DeletePattern, binding, targetGraph);
+        }
+
+        // 5. Apply INSERT template: for each binding, instantiate and insert
+        foreach (var binding in bindings)
+        {
+            InstantiateAndInsert(cmd.InsertPattern, binding, targetGraph);
+        }
+    }
+
+    private void ProcessDeleteWhere(DeleteCommand cmd)
+    {
+        var processor = CreateQueryProcessor();
+        var query = new SparqlQueryParser().ParseFromString("SELECT * WHERE " + cmd.WherePattern);
+        var result = processor.ProcessQuery(query);
+
+        if (result is not SparqlResultSet resultSet || resultSet.Count == 0)
+            return;
+
+        var bindings = resultSet.Results.ToList();
+
+        var targetGraph = cmd.TargetGraph is IUriNode uriNode
+            ? uriNode.Uri.AbsoluteUri
+            : string.Empty;
+
+        foreach (var binding in bindings)
+        {
+            InstantiateAndDelete(cmd.DeletePattern, binding, targetGraph);
+        }
+    }
+
+    private void ProcessInsertWhere(InsertCommand cmd)
+    {
+        var processor = CreateQueryProcessor();
+        var query = new SparqlQueryParser().ParseFromString("SELECT * WHERE " + cmd.WherePattern);
+        var result = processor.ProcessQuery(query);
+
+        if (result is not SparqlResultSet resultSet || resultSet.Count == 0)
+            return;
+
+        var bindings = resultSet.Results.ToList();
+
+        var targetGraph = cmd.TargetGraph is IUriNode uriNode
+            ? uriNode.Uri.AbsoluteUri
+            : string.Empty;
+
+        foreach (var binding in bindings)
+        {
+            InstantiateAndInsert(cmd.InsertPattern, binding, targetGraph);
+        }
+    }
+
+    private void ProcessDropOrClear(ClearMode mode, IRefNode targetGraphName, bool silent)
+    {
+        switch (mode)
+        {
+            case ClearMode.Graph:
+                var uri = targetGraphName is IUriNode uriNode
+                    ? uriNode.Uri.AbsoluteUri
+                    : string.Empty;
+                if (!silent)
+                {
+                    var graphNames = ListGraphNames();
+                    if (!graphNames.Contains(uri))
+                    {
+                        throw new RdfStorageException(
+                            $"Graph <{uri}> does not exist in the store.");
+                    }
+                }
+                _store.Delete(graph: uri);
+                break;
+
+            case ClearMode.All:
+                _store.Delete();
+                break;
+
+            case ClearMode.Default:
+                _store.Delete(graph: "");
+                break;
+
+            case ClearMode.Named:
+                foreach (var graphName in ListGraphNames().ToList())
+                {
+                    if (!string.IsNullOrEmpty(graphName))
+                    {
+                        _store.Delete(graph: graphName);
+                    }
+                }
+                break;
+        }
+    }
+
+    private void InstantiateAndDelete(GraphPattern pattern, ISparqlResult binding, string defaultGraph)
+    {
+        foreach (var tp in pattern.TriplePatterns.OfType<IConstructTriplePattern>())
+        {
+            var triplePattern = (TriplePattern)tp;
+            var s = ResolvePatternItem(triplePattern.Subject, binding);
+            var p = ResolvePatternItem(triplePattern.Predicate, binding);
+            var o = ResolvePatternItem(triplePattern.Object, binding);
+            if (s != null && p != null && o != null)
+            {
+                _store.Delete(subject: s, predicate: p, obj: o, graph: defaultGraph);
+            }
+        }
+
+        foreach (var childPattern in pattern.ChildGraphPatterns)
+        {
+            if (!childPattern.IsGraph) continue;
+            var graphUri = childPattern.GraphSpecifier.Value;
+            foreach (var tp in childPattern.TriplePatterns.OfType<IConstructTriplePattern>())
+            {
+                var triplePattern = (TriplePattern)tp;
+                var s = ResolvePatternItem(triplePattern.Subject, binding);
+                var p = ResolvePatternItem(triplePattern.Predicate, binding);
+                var o = ResolvePatternItem(triplePattern.Object, binding);
+                if (s != null && p != null && o != null)
+                {
+                    _store.Delete(subject: s, predicate: p, obj: o, graph: graphUri);
+                }
+            }
+        }
+    }
+
+    private void InstantiateAndInsert(GraphPattern pattern, ISparqlResult binding, string defaultGraph)
+    {
+        foreach (var tp in pattern.TriplePatterns.OfType<IConstructTriplePattern>())
+        {
+            var triplePattern = (TriplePattern)tp;
+            var s = ResolvePatternItem(triplePattern.Subject, binding);
+            var p = ResolvePatternItem(triplePattern.Predicate, binding);
+            var o = ResolvePatternItem(triplePattern.Object, binding);
+            if (s != null && p != null && o != null)
+            {
+                _store.Append(s, p, o, defaultGraph);
+            }
+        }
+
+        foreach (var childPattern in pattern.ChildGraphPatterns)
+        {
+            if (!childPattern.IsGraph) continue;
+            var graphUri = childPattern.GraphSpecifier.Value;
+            foreach (var tp in childPattern.TriplePatterns.OfType<IConstructTriplePattern>())
+            {
+                var triplePattern = (TriplePattern)tp;
+                var s = ResolvePatternItem(triplePattern.Subject, binding);
+                var p = ResolvePatternItem(triplePattern.Predicate, binding);
+                var o = ResolvePatternItem(triplePattern.Object, binding);
+                if (s != null && p != null && o != null)
+                {
+                    _store.Append(s, p, o, graphUri);
+                }
+            }
+        }
+    }
+
+    private static string? ResolvePatternItem(PatternItem item, ISparqlResult binding)
+    {
+        if (item is NodeMatchPattern nodeMatch)
+        {
+            return NodeToString(nodeMatch.Node);
+        }
+
+        if (item is VariablePattern varPattern)
+        {
+            var varName = varPattern.VariableName;
+            if (binding.HasValue(varName))
+            {
+                var node = binding[varName];
+                if (node != null)
+                {
+                    return NodeToString(node);
+                }
+            }
+            return null;
+        }
+
+        return item.ToString();
+    }
+
+    private void AppendTriplePattern(IConstructTriplePattern tp, string graphUri)
+    {
+        var triplePattern = (TriplePattern)tp;
+        var s = PatternItemToString(triplePattern.Subject);
+        var p = PatternItemToString(triplePattern.Predicate);
+        var o = PatternItemToString(triplePattern.Object);
+        _store.Append(s, p, o, graphUri);
+    }
+
+    private void DeleteTriplePattern(IConstructTriplePattern tp, string graphUri)
+    {
+        var triplePattern = (TriplePattern)tp;
+        var s = PatternItemToString(triplePattern.Subject);
+        var p = PatternItemToString(triplePattern.Predicate);
+        var o = PatternItemToString(triplePattern.Object);
+        _store.Delete(subject: s, predicate: p, obj: o, graph: graphUri);
+    }
+
+    private static string PatternItemToString(PatternItem item)
+    {
+        if (item is NodeMatchPattern nodeMatch)
+        {
+            return NodeToString(nodeMatch.Node);
+        }
+        return item.ToString();
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Deletes all quads in the specified graph, trying both the plain and angle-bracketed
+    /// forms of the URI to handle data stored in either format.
+    /// </summary>
+    private void DeleteGraphInternal(string graphUri)
+    {
+        if (string.IsNullOrEmpty(graphUri))
+        {
+            _store.Delete(graph: "");
+            return;
+        }
+
+        var normalised = NormaliseGraphUri(graphUri);
+        _store.Delete(graph: normalised);
+        _store.Delete(graph: "<" + normalised + ">");
+    }
 
     private void LoadGraphInternal(IGraph g, string? graphUri)
     {
@@ -298,12 +669,17 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
 
     private void UpdateGraphInternal(string graphUri, IEnumerable<Triple> additions, IEnumerable<Triple> removals)
     {
+        // Process removals before additions (SPARQL Update semantics)
         if (removals != null)
         {
-            var removalList = removals.ToList();
-            if (removalList.Count > 0)
-                throw new RdfStorageException(
-                    "QuadStore is append-only and does not support triple removal.");
+            foreach (var triple in removals)
+            {
+                _store.Delete(
+                    subject: NodeToString(triple.Subject),
+                    predicate: NodeToString(triple.Predicate),
+                    obj: NodeToString(triple.Object),
+                    graph: graphUri);
+            }
         }
 
         if (additions != null)
@@ -329,8 +705,8 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             return _store.Query();
 
         // Normalise: derive both the plain and angle-bracketed form of the URI.
-        string plain = NormaliseGraphUri(graphUri);
-        string bracketed = $"<{plain}>";
+        var plain = NormaliseGraphUri(graphUri);
+        var bracketed = $"<{plain}>";
 
         var seen = new HashSet<(string, string, string, string)>();
         IEnumerable<(string, string, string, string)> Merge()
@@ -373,7 +749,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// plain absolute URI.  If the value is not angle-bracketed it is returned unchanged.
     /// </summary>
     private static string NormaliseGraphUri(string graphUri) =>
-        graphUri.StartsWith("<") && graphUri.EndsWith(">") ? graphUri[1..^1] : graphUri;
+        graphUri.StartsWith('<') && graphUri.EndsWith('>') ? graphUri[1..^1] : graphUri;
 
     private const string XsdStringUri = "http://www.w3.org/2001/XMLSchema#string";
 
@@ -423,7 +799,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             return factory.CreateBlankNode(value[2..]);
 
         // Angle-bracketed URI: <http://...>
-        if (value.StartsWith("<") && value.EndsWith(">"))
+        if (value.StartsWith('<') && value.EndsWith('>'))
         {
             var uriStr = value[1..^1];
             if (Uri.TryCreate(uriStr, UriKind.Absolute, out var uri))
@@ -435,10 +811,10 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             return factory.CreateUriNode(plainUri);
 
         // Quoted literal (plain, typed, or language-tagged)
-        if (value.StartsWith("\""))
+        if (value.StartsWith('\"'))
         {
             // Typed literal: "value"^^<datatype>
-            int dtIdx = value.LastIndexOf("\"^^<");
+            var dtIdx = value.LastIndexOf("\"^^<");
             if (dtIdx > 0)
             {
                 var litVal = UnescapeLiteral(value[1..dtIdx]);
@@ -448,7 +824,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             }
 
             // Language-tagged literal: "value"@lang
-            int langIdx = value.LastIndexOf("\"@");
+            var langIdx = value.LastIndexOf("\"@");
             if (langIdx > 0)
             {
                 var litVal = UnescapeLiteral(value[1..langIdx]);
@@ -477,7 +853,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
         // Process escape sequences token-by-token to avoid chained Replace corruption.
         // e.g. "\\n" must become backslash+n, not a newline.
         var sb = new System.Text.StringBuilder(value.Length);
-        int i = 0;
+        var i = 0;
         while (i < value.Length)
         {
             if (value[i] == '\\' && i + 1 < value.Length)

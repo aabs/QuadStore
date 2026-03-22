@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using FluentAssertions;
@@ -29,16 +28,16 @@ public class QuadStoreStorageProviderTests
     }
 
     private static QuadStoreStorageProvider NewProvider(QuadStore? store = null)
-        => new QuadStoreStorageProvider(store ?? NewStore());
+        => new(store ?? NewStore());
 
-    private static Uri U(string uri) => new Uri(uri);
+    private static Uri U(string uri) => new(uri);
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
     [Fact]
     public void Constructor_NullStore_Throws()
     {
-        Action act = () => new QuadStoreStorageProvider(null!);
+        Action act = static () => new QuadStoreStorageProvider(default!);
         act.Should().Throw<ArgumentNullException>().WithParameterName("store");
     }
 
@@ -66,8 +65,8 @@ public class QuadStoreStorageProviderTests
         => NewProvider().UpdateSupported.Should().BeTrue();
 
     [Fact]
-    public void DeleteSupported_ReturnsFalse()
-        => NewProvider().DeleteSupported.Should().BeFalse();
+    public void DeleteSupported_ReturnsTrue()
+        => NewProvider().DeleteSupported.Should().BeTrue();
 
     [Fact]
     public void ListGraphsSupported_ReturnsTrue()
@@ -97,8 +96,10 @@ public class QuadStoreStorageProviderTests
         using var store = NewStore();
         var provider = new QuadStoreStorageProvider(store);
 
-        var g = new Graph();
-        g.BaseUri = U("http://example.org/g1");
+        var g = new Graph
+        {
+            BaseUri = U("http://example.org/g1")
+        };
         var factory = new NodeFactory();
         var s = factory.CreateUriNode(U("http://example.org/Ada"));
         var p = factory.CreateUriNode(U("http://example.org/knows"));
@@ -120,8 +121,10 @@ public class QuadStoreStorageProviderTests
         using var store = NewStore();
         var provider = new QuadStoreStorageProvider(store);
 
-        var g = new Graph();
-        g.BaseUri = U("http://example.org/g2");
+        var g = new Graph
+        {
+            BaseUri = U("http://example.org/g2")
+        };
         var factory = new NodeFactory();
         var s = factory.CreateUriNode(U("http://example.org/Ada"));
         var p = factory.CreateUriNode(U("http://example.org/name"));
@@ -141,8 +144,10 @@ public class QuadStoreStorageProviderTests
         using var store = NewStore();
         var provider = new QuadStoreStorageProvider(store);
 
-        var g = new Graph();
-        g.BaseUri = U("http://example.org/g3");
+        var g = new Graph
+        {
+            BaseUri = U("http://example.org/g3")
+        };
         var factory = new NodeFactory();
         var s = factory.CreateUriNode(U("http://example.org/item"));
         var p = factory.CreateUriNode(U("http://example.org/count"));
@@ -293,7 +298,7 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/P")),
             factory.CreateUriNode(U("http://example.org/O")));
 
-        provider.UpdateGraph(graphUri, new[] { triple }, null!);
+        provider.UpdateGraph(graphUri, [triple], null!);
 
         store.Query(graph: "http://example.org/g").Should().ContainSingle();
     }
@@ -310,7 +315,7 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/P")),
             factory.CreateUriNode(U("http://example.org/O")));
 
-        provider.UpdateGraph("http://example.org/g", new[] { triple }, null!);
+        provider.UpdateGraph("http://example.org/g", [triple], null!);
 
         store.Query(graph: "http://example.org/g").Should().ContainSingle();
     }
@@ -328,52 +333,63 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/P")),
             factory.CreateUriNode(U("http://example.org/O")));
 
-        provider.UpdateGraph(graphNode, new[] { triple }, null!);
+        provider.UpdateGraph(graphNode, [triple], null!);
 
         store.Query(graph: "http://example.org/g").Should().ContainSingle();
     }
 
     [Fact]
-    public void UpdateGraph_WithRemovals_Throws()
+    public void UpdateGraph_WithRemovals_DeletesMatchingTriples()
     {
-        var provider = NewProvider();
+        using var store = NewStore();
+        var provider = new QuadStoreStorageProvider(store);
         var factory = new NodeFactory();
         var triple = new Triple(
             factory.CreateUriNode(U("http://example.org/S")),
             factory.CreateUriNode(U("http://example.org/P")),
             factory.CreateUriNode(U("http://example.org/O")));
 
-        provider.Invoking(p => p.UpdateGraph("http://example.org/g", null!, new[] { triple }))
-            .Should().Throw<RdfStorageException>()
-            .WithMessage("*append-only*");
+        // Add a triple first
+        provider.UpdateGraph("http://example.org/g", [triple], null!);
+        store.Query(graph: "http://example.org/g").Should().ContainSingle();
+
+        // Remove it
+        provider.UpdateGraph("http://example.org/g", null!, [triple]);
+        store.Query(graph: "http://example.org/g").Should().BeEmpty();
     }
 
     [Fact]
     public void UpdateGraph_EmptyRemovals_DoesNotThrow()
     {
         var provider = NewProvider();
-        provider.Invoking(p => p.UpdateGraph("http://example.org/g", null!, Array.Empty<Triple>()))
+        provider.Invoking(p => p.UpdateGraph("http://example.org/g", null!, []))
             .Should().NotThrow();
     }
 
     // ── DeleteGraph ──────────────────────────────────────────────────────────
 
     [Fact]
-    public void DeleteGraph_ByUri_AlwaysThrows()
+    public void DeleteGraph_ByUri_DeletesQuadsInGraph()
     {
-        var provider = NewProvider();
-        provider.Invoking(p => p.DeleteGraph(U("http://example.org/g")))
-            .Should().Throw<RdfStorageException>()
-            .WithMessage("*append-only*");
+        using var store = NewStore();
+        store.Append("http://example.org/S", "http://example.org/P", "http://example.org/O", "http://example.org/g");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.DeleteGraph(U("http://example.org/g"));
+
+        store.Query(graph: "http://example.org/g").Should().BeEmpty();
     }
 
     [Fact]
-    public void DeleteGraph_ByString_AlwaysThrows()
+    public void DeleteGraph_ByString_DeletesQuadsInGraph()
     {
-        var provider = NewProvider();
-        provider.Invoking(p => p.DeleteGraph("http://example.org/g"))
-            .Should().Throw<RdfStorageException>()
-            .WithMessage("*append-only*");
+        using var store = NewStore();
+        store.Append("http://example.org/S", "http://example.org/P", "http://example.org/O", "http://example.org/g");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.DeleteGraph("http://example.org/g");
+
+        store.Query(graph: "http://example.org/g").Should().BeEmpty();
     }
 
     // ── ListGraphs / ListGraphNames ──────────────────────────────────────────
@@ -562,12 +578,98 @@ public class QuadStoreStorageProviderTests
     // ── IUpdateableStorage ───────────────────────────────────────────────────
 
     [Fact]
-    public void Update_AlwaysThrows()
+    public void Update_InsertData_DefaultGraph_AppendsQuads()
+    {
+        using var store = NewStore();
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("INSERT DATA { <http://example.org/s> <http://example.org/p> <http://example.org/o> }");
+
+        var results = store.Query(graph: "").ToList();
+        results.Should().ContainSingle();
+        results[0].subject.Should().Be("http://example.org/s");
+        results[0].predicate.Should().Be("http://example.org/p");
+        results[0].obj.Should().Be("http://example.org/o");
+    }
+
+    [Fact]
+    public void Update_InsertData_WithGraphClause_AppendsToNamedGraph()
+    {
+        using var store = NewStore();
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("INSERT DATA { GRAPH <http://example.org/g1> { <http://example.org/s> <http://example.org/p> <http://example.org/o> } }");
+
+        var results = store.Query(graph: "http://example.org/g1").ToList();
+        results.Should().ContainSingle();
+        results[0].subject.Should().Be("http://example.org/s");
+    }
+
+    [Fact]
+    public void Update_InsertData_InvalidSyntax_ThrowsRdfStorageException()
     {
         var provider = NewProvider();
-        provider.Invoking(p => ((IUpdateableStorage)p).Update("INSERT DATA { <http://s> <http://p> <http://o> }"))
+        provider.Invoking(p => p.Update("INSERT DATA { not valid sparql"))
             .Should().Throw<RdfStorageException>()
-            .WithMessage("*SPARQL Update*");
+            .WithMessage("*parse*");
+    }
+
+    [Fact]
+    public void Update_DeleteData_RemovesQuads()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s", "http://example.org/p", "http://example.org/o", "");
+        store.Append("http://example.org/s2", "http://example.org/p2", "http://example.org/o2", "");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("DELETE DATA { <http://example.org/s> <http://example.org/p> <http://example.org/o> }");
+
+        var results = store.Query(graph: "").ToList();
+        results.Should().ContainSingle();
+        results[0].subject.Should().Be("http://example.org/s2");
+    }
+
+    [Fact]
+    public void Update_DeleteData_WithGraphClause_RemovesFromNamedGraph()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s", "http://example.org/p", "http://example.org/o", "http://example.org/g1");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("DELETE DATA { GRAPH <http://example.org/g1> { <http://example.org/s> <http://example.org/p> <http://example.org/o> } }");
+
+        store.Query(graph: "http://example.org/g1").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Update_DeleteData_NonExistentQuad_IsNoOp()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s", "http://example.org/p", "http://example.org/o", "");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Invoking(p => p.Update("DELETE DATA { <http://example.org/x> <http://example.org/y> <http://example.org/z> }"))
+            .Should().NotThrow();
+
+        store.Query(graph: "").Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Update_DeleteData_InvalidSyntax_ThrowsRdfStorageException()
+    {
+        var provider = NewProvider();
+        provider.Invoking(p => p.Update("DELETE DATA { broken syntax"))
+            .Should().Throw<RdfStorageException>()
+            .WithMessage("*parse*");
+    }
+
+    [Fact]
+    public void Update_UnsupportedCommand_ThrowsRdfStorageException()
+    {
+        var provider = NewProvider();
+        provider.Invoking(p => p.Update("LOAD <http://example.org/file>"))
+            .Should().Throw<RdfStorageException>()
+            .WithMessage("*Unsupported*");
     }
 
     // ── NodeToString / StringToNode round-trip ───────────────────────────────
@@ -735,8 +837,10 @@ public class QuadStoreStorageProviderTests
         var provider = new QuadStoreStorageProvider(store);
         var graphUri = U("http://example.org/rt");
 
-        var original = new Graph();
-        original.BaseUri = graphUri;
+        var original = new Graph
+        {
+            BaseUri = graphUri
+        };
         var factory = new NodeFactory();
         original.Assert(new Triple(
             factory.CreateUriNode(U("http://example.org/Ada")),
@@ -754,6 +858,114 @@ public class QuadStoreStorageProviderTests
 
         loaded.Triples.Should().HaveCount(2);
         loaded.BaseUri.Should().Be(graphUri);
+    }
+
+    // ── IOBehaviour ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void IOBehaviour_IncludesCanUpdateDeleteTriples()
+        => (NewProvider().IOBehaviour & IOBehaviour.CanUpdateDeleteTriples)
+            .Should().Be(IOBehaviour.CanUpdateDeleteTriples);
+
+    // ── ListGraphs after DeleteGraph ─────────────────────────────────────────
+
+    [Fact]
+    public void ListGraphs_ExcludesDeletedGraph()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/S1", "http://example.org/P", "http://example.org/O", "http://example.org/g1");
+        store.Append("http://example.org/S2", "http://example.org/P", "http://example.org/O", "http://example.org/g2");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.DeleteGraph("http://example.org/g1");
+
+        var graphs = provider.ListGraphs().Select(g => g.AbsoluteUri).ToList();
+        graphs.Should().NotContain("http://example.org/g1");
+        graphs.Should().Contain("http://example.org/g2");
+    }
+
+    // ── UpdateGraph: removals before additions ───────────────────────────────
+
+    [Fact]
+    public void UpdateGraph_RemovalsProcessedBeforeAdditions()
+    {
+        using var store = NewStore();
+        var provider = new QuadStoreStorageProvider(store);
+        var factory = new NodeFactory();
+
+        var oldTriple = new Triple(
+            factory.CreateUriNode(U("http://example.org/S")),
+            factory.CreateUriNode(U("http://example.org/P")),
+            factory.CreateUriNode(U("http://example.org/OldValue")));
+
+        var newTriple = new Triple(
+            factory.CreateUriNode(U("http://example.org/S")),
+            factory.CreateUriNode(U("http://example.org/P")),
+            factory.CreateUriNode(U("http://example.org/NewValue")));
+
+        // Seed the old triple
+        provider.UpdateGraph("http://example.org/g", [oldTriple], null!);
+
+        // In a single UpdateGraph call, remove old and add new
+        provider.UpdateGraph("http://example.org/g", [newTriple], [oldTriple]);
+
+        var loaded = new Graph();
+        provider.LoadGraph(loaded, "http://example.org/g");
+
+        // Old triple should be gone, new triple should be present
+        loaded.Triples.Should().ContainSingle();
+        var triple = loaded.Triples.Single();
+        QuadStoreStorageProvider.NodeToString(triple.Object).Should().Be("http://example.org/NewValue");
+    }
+
+    // ── UpdateGraph: removal of non-existent triple ──────────────────────────
+
+    [Fact]
+    public void UpdateGraph_RemovalOfNonExistentTriple_IsNoOp()
+    {
+        using var store = NewStore();
+        var provider = new QuadStoreStorageProvider(store);
+        var factory = new NodeFactory();
+
+        var existing = new Triple(
+            factory.CreateUriNode(U("http://example.org/S")),
+            factory.CreateUriNode(U("http://example.org/P")),
+            factory.CreateUriNode(U("http://example.org/O")));
+
+        var nonExistent = new Triple(
+            factory.CreateUriNode(U("http://example.org/X")),
+            factory.CreateUriNode(U("http://example.org/Y")),
+            factory.CreateUriNode(U("http://example.org/Z")));
+
+        // Add one triple
+        provider.UpdateGraph("http://example.org/g", [existing], null!);
+
+        // Try to remove a triple that doesn't exist — should not throw
+        provider.Invoking(p => p.UpdateGraph("http://example.org/g", null!, [nonExistent]))
+            .Should().NotThrow();
+
+        // Original triple should still be there
+        store.Query(graph: "http://example.org/g").Should().ContainSingle();
+    }
+
+    // ── UpdateGraph: null removals backward compat ───────────────────────────
+
+    [Fact]
+    public void UpdateGraph_NullRemovals_StillAppendsAdditions()
+    {
+        using var store = NewStore();
+        var provider = new QuadStoreStorageProvider(store);
+        var factory = new NodeFactory();
+
+        var triple = new Triple(
+            factory.CreateUriNode(U("http://example.org/S")),
+            factory.CreateUriNode(U("http://example.org/P")),
+            factory.CreateUriNode(U("http://example.org/O")));
+
+        // Pass null for removals (backward compat)
+        provider.UpdateGraph("http://example.org/g", [triple], null!);
+
+        store.Query(graph: "http://example.org/g").Should().ContainSingle();
     }
 
     // ── Integration: UpdateGraph → LoadGraph ─────────────────────────────────
@@ -775,11 +987,229 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/P")),
             factory.CreateUriNode(U("http://example.org/O2")));
 
-        provider.UpdateGraph(graphUri, new[] { t1 }, null!);
-        provider.UpdateGraph(graphUri, new[] { t2 }, null!);
+        provider.UpdateGraph(graphUri, [t1], null!);
+        provider.UpdateGraph(graphUri, [t2], null!);
 
         var loaded = new Graph();
         provider.LoadGraph(loaded, graphUri);
         loaded.Triples.Should().HaveCount(2);
+    }
+
+    // ── SPARQL DELETE/INSERT WHERE ───────────────────────────────────────────
+
+    [Fact]
+    public void Update_DeleteWhere_RemovesMatchingQuads()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/Ada", "http://example.org/knows", "http://example.org/Bob", "");
+        store.Append("http://example.org/Ada", "http://example.org/knows", "http://example.org/Eve", "");
+        store.Append("http://example.org/Zoe", "http://example.org/likes", "http://example.org/Cat", "");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("DELETE { ?s <http://example.org/knows> ?o } WHERE { ?s <http://example.org/knows> ?o }");
+
+        var results = store.Query(graph: "").ToList();
+        results.Should().ContainSingle();
+        results[0].subject.Should().Be("http://example.org/Zoe");
+    }
+
+    [Fact]
+    public void Update_DeleteInsertWhere_ReplacesMatchingQuads()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/Ada", "http://example.org/status", "http://example.org/Active", "");
+        store.Append("http://example.org/Bob", "http://example.org/status", "http://example.org/Active", "");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update(@"
+            DELETE { ?s <http://example.org/status> <http://example.org/Active> }
+            INSERT { ?s <http://example.org/status> <http://example.org/Archived> }
+            WHERE  { ?s <http://example.org/status> <http://example.org/Active> }");
+
+        var results = store.Query(graph: "").ToList();
+        results.Should().HaveCount(2);
+        results.Should().OnlyContain(r => r.obj == "http://example.org/Archived");
+    }
+
+    [Fact]
+    public void Update_DeleteInsertWhere_SnapshotSemantics()
+    {
+        // Snapshot semantics: all bindings collected before any changes applied.
+        // Without snapshot, deleting "Ada knows Bob" could affect subsequent bindings.
+        using var store = NewStore();
+        store.Append("http://example.org/Ada", "http://example.org/knows", "http://example.org/Bob", "");
+        store.Append("http://example.org/Bob", "http://example.org/knows", "http://example.org/Eve", "");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update(@"
+            DELETE { ?a <http://example.org/knows> ?b }
+            INSERT { ?a <http://example.org/knew> ?b }
+            WHERE  { ?a <http://example.org/knows> ?b }");
+
+        // Both original triples should be deleted and replaced
+        var knows = store.Query(predicate: "http://example.org/knows").ToList();
+        knows.Should().BeEmpty();
+
+        var knew = store.Query(predicate: "http://example.org/knew").ToList();
+        knew.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void Update_DeleteInsertWhere_NoMatch_IsNoOp()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/Ada", "http://example.org/knows", "http://example.org/Bob", "");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Invoking(p => p.Update(@"
+            DELETE { ?s <http://example.org/likes> ?o }
+            INSERT { ?s <http://example.org/loved> ?o }
+            WHERE  { ?s <http://example.org/likes> ?o }"))
+            .Should().NotThrow();
+
+        store.Query(graph: "").Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Update_DeleteWhere_WithGraphClause()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s1", "http://example.org/p", "http://example.org/o1", "http://example.org/g1");
+        store.Append("http://example.org/s2", "http://example.org/p", "http://example.org/o2", "http://example.org/g1");
+        store.Append("http://example.org/s3", "http://example.org/p", "http://example.org/o3", "http://example.org/g2");
+        var provider = new QuadStoreStorageProvider(store);
+
+        // Use WITH clause to scope the operation to g1
+        provider.Update(@"
+            WITH <http://example.org/g1>
+            DELETE { ?s <http://example.org/p> ?o }
+            WHERE  { ?s <http://example.org/p> ?o }");
+
+        // g1 should be empty, g2 should remain
+        store.Query(graph: "http://example.org/g1").Should().BeEmpty();
+        store.Query(graph: "http://example.org/g2").Should().ContainSingle();
+    }
+
+    // ── SPARQL DROP ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Update_DropGraph_DeletesAllQuadsInGraph()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s1", "http://example.org/p", "http://example.org/o1", "http://example.org/g1");
+        store.Append("http://example.org/s2", "http://example.org/p", "http://example.org/o2", "http://example.org/g2");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("DROP GRAPH <http://example.org/g1>");
+
+        store.Query(graph: "http://example.org/g1").Should().BeEmpty();
+        store.Query(graph: "http://example.org/g2").Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Update_DropGraph_NonExistent_WithoutSilent_Throws()
+    {
+        var provider = NewProvider();
+        provider.Invoking(p => p.Update("DROP GRAPH <http://example.org/nonexistent>"))
+            .Should().Throw<RdfStorageException>()
+            .WithMessage("*does not exist*");
+    }
+
+    [Fact]
+    public void Update_DropGraph_NonExistent_WithSilent_Succeeds()
+    {
+        var provider = NewProvider();
+        provider.Invoking(p => p.Update("DROP SILENT GRAPH <http://example.org/nonexistent>"))
+            .Should().NotThrow();
+    }
+
+    [Fact]
+    public void Update_DropAll_DeletesEverything()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s1", "http://example.org/p", "http://example.org/o1", "http://example.org/g1");
+        store.Append("http://example.org/s2", "http://example.org/p", "http://example.org/o2", "http://example.org/g2");
+        store.Append("http://example.org/s3", "http://example.org/p", "http://example.org/o3", "");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("DROP ALL");
+
+        store.Query().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Update_DropDefault_DeletesDefaultGraph()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s1", "http://example.org/p", "http://example.org/o1", "");
+        store.Append("http://example.org/s2", "http://example.org/p", "http://example.org/o2", "http://example.org/g1");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("DROP DEFAULT");
+
+        store.Query(graph: "").Should().BeEmpty();
+        store.Query(graph: "http://example.org/g1").Should().ContainSingle();
+    }
+
+    // ── SPARQL CLEAR ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Update_ClearGraph_DeletesAllQuadsInGraph()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s1", "http://example.org/p", "http://example.org/o1", "http://example.org/g1");
+        store.Append("http://example.org/s2", "http://example.org/p", "http://example.org/o2", "http://example.org/g2");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("CLEAR GRAPH <http://example.org/g1>");
+
+        store.Query(graph: "http://example.org/g1").Should().BeEmpty();
+        store.Query(graph: "http://example.org/g2").Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Update_ClearAll_DeletesEverything()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s1", "http://example.org/p", "http://example.org/o1", "http://example.org/g1");
+        store.Append("http://example.org/s2", "http://example.org/p", "http://example.org/o2", "");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("CLEAR ALL");
+
+        store.Query().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Update_ClearDefault_DeletesDefaultGraph()
+    {
+        using var store = NewStore();
+        store.Append("http://example.org/s1", "http://example.org/p", "http://example.org/o1", "");
+        store.Append("http://example.org/s2", "http://example.org/p", "http://example.org/o2", "http://example.org/g1");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update("CLEAR DEFAULT");
+
+        store.Query(graph: "").Should().BeEmpty();
+        store.Query(graph: "http://example.org/g1").Should().ContainSingle();
+    }
+
+    // ── SPARQL INSERT-only WHERE ─────────────────────────────────────────────
+
+    [Fact]
+    public void Update_InsertOnly_Where()
+    {
+        // DELETE/INSERT WHERE with empty DELETE pattern (INSERT-only with WHERE)
+        using var store = NewStore();
+        store.Append("http://example.org/Ada", "http://example.org/name", "http://example.org/Ada", "");
+        var provider = new QuadStoreStorageProvider(store);
+
+        provider.Update(@"
+            INSERT { ?s <http://example.org/hasRecord> <http://example.org/true> }
+            WHERE  { ?s <http://example.org/name> ?o }");
+
+        var results = store.Query(predicate: "http://example.org/hasRecord").ToList();
+        results.Should().ContainSingle();
+        results[0].subject.Should().Be("http://example.org/Ada");
     }
 }

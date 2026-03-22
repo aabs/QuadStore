@@ -35,6 +35,46 @@ public class BitmapIndexTests
     }
 
     [Fact]
+    public void Remove_ExistingRowId_RemovesItFromBitmap()
+    {
+        var dir = NewTempDir();
+        var idx = new BitmapIndex(Path.Combine(dir, "index.bin"));
+        idx.Add(1, 10);
+        idx.Add(1, 20);
+        idx.Add(1, 30);
+
+        idx.Remove(1, 20);
+
+        idx.GetRows(1).Should().BeEquivalentTo(new long[] { 10, 30 });
+    }
+
+    [Fact]
+    public void Remove_NonExistentRowId_IsNoOp()
+    {
+        var dir = NewTempDir();
+        var idx = new BitmapIndex(Path.Combine(dir, "index.bin"));
+        idx.Add(1, 10);
+        idx.Add(1, 20);
+
+        idx.Remove(1, 999);
+
+        idx.GetRows(1).Should().BeEquivalentTo(new long[] { 10, 20 });
+    }
+
+    [Fact]
+    public void Remove_NonExistentDictionaryId_IsNoOp()
+    {
+        var dir = NewTempDir();
+        var idx = new BitmapIndex(Path.Combine(dir, "index.bin"));
+        idx.Add(1, 10);
+
+        var act = () => idx.Remove(999, 10);
+
+        act.Should().NotThrow();
+        idx.GetRows(1).Should().BeEquivalentTo(new long[] { 10 });
+    }
+
+    [Fact]
     public void Test_PersistAndReload_BitmapIntegrity()
     {
         var dir = NewTempDir();
