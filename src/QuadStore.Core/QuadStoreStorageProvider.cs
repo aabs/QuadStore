@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 using VDS.RDF.Query;
@@ -49,19 +46,14 @@ namespace TripleStore.Core;
 /// var results = (SparqlResultSet)queryProvider.Query("SELECT * WHERE { ?s ?p ?o }");
 /// </code>
 /// </example>
-public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStorage, IUpdateableStorage
+/// <remarks>
+/// Initializes a new instance of <see cref="QuadStoreStorageProvider"/>.
+/// </remarks>
+/// <param name="store">The underlying <see cref="QuadStore"/> instance.</param>
+/// <exception cref="ArgumentNullException">Thrown when <paramref name="store"/> is null.</exception>
+public sealed class QuadStoreStorageProvider(QuadStore store) : IStorageProvider, IQueryableStorage, IUpdateableStorage
 {
-    private readonly QuadStore _store;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="QuadStoreStorageProvider"/>.
-    /// </summary>
-    /// <param name="store">The underlying <see cref="QuadStore"/> instance.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="store"/> is null.</exception>
-    public QuadStoreStorageProvider(QuadStore store)
-    {
-        _store = store ?? throw new ArgumentNullException(nameof(store));
-    }
+    private readonly QuadStore _store = store ?? throw new ArgumentNullException(nameof(store));
 
     // ── IStorageCapabilities ────────────────────────────────────────────────
 
@@ -101,7 +93,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <inheritdoc/>
     public void LoadGraph(IGraph g, Uri graphUri)
     {
-        if (g == null) throw new ArgumentNullException(nameof(g));
+        ArgumentNullException.ThrowIfNull(g);
         LoadGraphInternal(g, graphUri?.AbsoluteUri);
         if (graphUri != null)
             g.BaseUri = graphUri;
@@ -110,7 +102,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <inheritdoc/>
     public void LoadGraph(IGraph g, string graphUri)
     {
-        if (g == null) throw new ArgumentNullException(nameof(g));
+        ArgumentNullException.ThrowIfNull(g);
         LoadGraphInternal(g, graphUri);
         var normalised = graphUri != null ? NormaliseGraphUri(graphUri) : null;
         if (normalised != null && Uri.TryCreate(normalised, UriKind.Absolute, out var uri))
@@ -120,14 +112,14 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <inheritdoc/>
     public void LoadGraph(IRdfHandler handler, Uri graphUri)
     {
-        if (handler == null) throw new ArgumentNullException(nameof(handler));
+        ArgumentNullException.ThrowIfNull(handler);
         LoadGraphHandlerInternal(handler, graphUri?.AbsoluteUri);
     }
 
     /// <inheritdoc/>
     public void LoadGraph(IRdfHandler handler, string graphUri)
     {
-        if (handler == null) throw new ArgumentNullException(nameof(handler));
+        ArgumentNullException.ThrowIfNull(handler);
         LoadGraphHandlerInternal(handler, graphUri);
     }
 
@@ -139,8 +131,8 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// </remarks>
     public void SaveGraph(IGraph g)
     {
-        if (g == null) throw new ArgumentNullException(nameof(g));
-        string graphUri = g.Name is IUriNode uriNode
+        ArgumentNullException.ThrowIfNull(g);
+        var graphUri = g.Name is IUriNode uriNode
             ? uriNode.Uri.AbsoluteUri
             : g.BaseUri?.AbsoluteUri ?? string.Empty;
 
@@ -161,7 +153,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// </remarks>
     public void UpdateGraph(IRefNode graphName, IEnumerable<Triple> additions, IEnumerable<Triple> removals)
     {
-        string graphUri = graphName is IUriNode un ? un.Uri.AbsoluteUri : string.Empty;
+        var graphUri = graphName is IUriNode un ? un.Uri.AbsoluteUri : string.Empty;
         UpdateGraphInternal(graphUri, additions, removals);
     }
 
@@ -237,7 +229,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="sparqlQuery"/> is null.</exception>
     public object Query(string sparqlQuery)
     {
-        if (sparqlQuery == null) throw new ArgumentNullException(nameof(sparqlQuery));
+        ArgumentNullException.ThrowIfNull(sparqlQuery);
         var processor = CreateQueryProcessor();
         var query = new SparqlQueryParser().ParseFromString(sparqlQuery);
         return processor.ProcessQuery(query);
@@ -253,7 +245,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="sparqlQuery"/> is null.</exception>
     public void Query(IRdfHandler rdfHandler, ISparqlResultsHandler resultsHandler, string sparqlQuery)
     {
-        if (sparqlQuery == null) throw new ArgumentNullException(nameof(sparqlQuery));
+        ArgumentNullException.ThrowIfNull(sparqlQuery);
         var processor = CreateQueryProcessor();
         var query = new SparqlQueryParser().ParseFromString(sparqlQuery);
         processor.ProcessQuery(rdfHandler, resultsHandler, query);
@@ -399,7 +391,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     {
         // 1. Build a snapshot dataset and evaluate the WHERE pattern to collect bindings
         var processor = CreateQueryProcessor();
-        var query = new SparqlQueryParser().ParseFromString("SELECT * WHERE " + cmd.WherePattern.ToString());
+        var query = new SparqlQueryParser().ParseFromString("SELECT * WHERE " + cmd.WherePattern);
         var result = processor.ProcessQuery(query);
 
         if (result is not SparqlResultSet resultSet || resultSet.Count == 0)
@@ -409,7 +401,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
         var bindings = resultSet.Results.ToList();
 
         // 3. Determine the target graph URI (from WITH clause, if any)
-        string targetGraph = cmd.TargetGraph is IUriNode uriNode
+        var targetGraph = cmd.TargetGraph is IUriNode uriNode
             ? uriNode.Uri.AbsoluteUri
             : string.Empty;
 
@@ -429,7 +421,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     private void ProcessDeleteWhere(DeleteCommand cmd)
     {
         var processor = CreateQueryProcessor();
-        var query = new SparqlQueryParser().ParseFromString("SELECT * WHERE " + cmd.WherePattern.ToString());
+        var query = new SparqlQueryParser().ParseFromString("SELECT * WHERE " + cmd.WherePattern);
         var result = processor.ProcessQuery(query);
 
         if (result is not SparqlResultSet resultSet || resultSet.Count == 0)
@@ -437,7 +429,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
 
         var bindings = resultSet.Results.ToList();
 
-        string targetGraph = cmd.TargetGraph is IUriNode uriNode
+        var targetGraph = cmd.TargetGraph is IUriNode uriNode
             ? uriNode.Uri.AbsoluteUri
             : string.Empty;
 
@@ -450,7 +442,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     private void ProcessInsertWhere(InsertCommand cmd)
     {
         var processor = CreateQueryProcessor();
-        var query = new SparqlQueryParser().ParseFromString("SELECT * WHERE " + cmd.WherePattern.ToString());
+        var query = new SparqlQueryParser().ParseFromString("SELECT * WHERE " + cmd.WherePattern);
         var result = processor.ProcessQuery(query);
 
         if (result is not SparqlResultSet resultSet || resultSet.Count == 0)
@@ -458,7 +450,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
 
         var bindings = resultSet.Results.ToList();
 
-        string targetGraph = cmd.TargetGraph is IUriNode uriNode
+        var targetGraph = cmd.TargetGraph is IUriNode uriNode
             ? uriNode.Uri.AbsoluteUri
             : string.Empty;
 
@@ -572,7 +564,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
         }
     }
 
-    private static string ResolvePatternItem(PatternItem item, ISparqlResult binding)
+    private static string? ResolvePatternItem(PatternItem item, ISparqlResult binding)
     {
         if (item is NodeMatchPattern nodeMatch)
         {
@@ -713,8 +705,8 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             return _store.Query();
 
         // Normalise: derive both the plain and angle-bracketed form of the URI.
-        string plain = NormaliseGraphUri(graphUri);
-        string bracketed = $"<{plain}>";
+        var plain = NormaliseGraphUri(graphUri);
+        var bracketed = $"<{plain}>";
 
         var seen = new HashSet<(string, string, string, string)>();
         IEnumerable<(string, string, string, string)> Merge()
@@ -757,7 +749,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
     /// plain absolute URI.  If the value is not angle-bracketed it is returned unchanged.
     /// </summary>
     private static string NormaliseGraphUri(string graphUri) =>
-        graphUri.StartsWith("<") && graphUri.EndsWith(">") ? graphUri[1..^1] : graphUri;
+        graphUri.StartsWith('<') && graphUri.EndsWith('>') ? graphUri[1..^1] : graphUri;
 
     private const string XsdStringUri = "http://www.w3.org/2001/XMLSchema#string";
 
@@ -807,7 +799,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             return factory.CreateBlankNode(value[2..]);
 
         // Angle-bracketed URI: <http://...>
-        if (value.StartsWith("<") && value.EndsWith(">"))
+        if (value.StartsWith('<') && value.EndsWith('>'))
         {
             var uriStr = value[1..^1];
             if (Uri.TryCreate(uriStr, UriKind.Absolute, out var uri))
@@ -819,10 +811,10 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             return factory.CreateUriNode(plainUri);
 
         // Quoted literal (plain, typed, or language-tagged)
-        if (value.StartsWith("\""))
+        if (value.StartsWith('\"'))
         {
             // Typed literal: "value"^^<datatype>
-            int dtIdx = value.LastIndexOf("\"^^<");
+            var dtIdx = value.LastIndexOf("\"^^<");
             if (dtIdx > 0)
             {
                 var litVal = UnescapeLiteral(value[1..dtIdx]);
@@ -832,7 +824,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
             }
 
             // Language-tagged literal: "value"@lang
-            int langIdx = value.LastIndexOf("\"@");
+            var langIdx = value.LastIndexOf("\"@");
             if (langIdx > 0)
             {
                 var litVal = UnescapeLiteral(value[1..langIdx]);
@@ -861,7 +853,7 @@ public sealed class QuadStoreStorageProvider : IStorageProvider, IQueryableStora
         // Process escape sequences token-by-token to avoid chained Replace corruption.
         // e.g. "\\n" must become backslash+n, not a newline.
         var sb = new System.Text.StringBuilder(value.Length);
-        int i = 0;
+        var i = 0;
         while (i < value.Length)
         {
             if (value[i] == '\\' && i + 1 < value.Length)

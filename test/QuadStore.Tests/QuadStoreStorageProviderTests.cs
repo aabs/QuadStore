@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using FluentAssertions;
@@ -29,16 +28,16 @@ public class QuadStoreStorageProviderTests
     }
 
     private static QuadStoreStorageProvider NewProvider(QuadStore? store = null)
-        => new QuadStoreStorageProvider(store ?? NewStore());
+        => new(store ?? NewStore());
 
-    private static Uri U(string uri) => new Uri(uri);
+    private static Uri U(string uri) => new(uri);
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
     [Fact]
     public void Constructor_NullStore_Throws()
     {
-        Action act = () => new QuadStoreStorageProvider(null!);
+        Action act = static () => new QuadStoreStorageProvider(default!);
         act.Should().Throw<ArgumentNullException>().WithParameterName("store");
     }
 
@@ -97,8 +96,10 @@ public class QuadStoreStorageProviderTests
         using var store = NewStore();
         var provider = new QuadStoreStorageProvider(store);
 
-        var g = new Graph();
-        g.BaseUri = U("http://example.org/g1");
+        var g = new Graph
+        {
+            BaseUri = U("http://example.org/g1")
+        };
         var factory = new NodeFactory();
         var s = factory.CreateUriNode(U("http://example.org/Ada"));
         var p = factory.CreateUriNode(U("http://example.org/knows"));
@@ -120,8 +121,10 @@ public class QuadStoreStorageProviderTests
         using var store = NewStore();
         var provider = new QuadStoreStorageProvider(store);
 
-        var g = new Graph();
-        g.BaseUri = U("http://example.org/g2");
+        var g = new Graph
+        {
+            BaseUri = U("http://example.org/g2")
+        };
         var factory = new NodeFactory();
         var s = factory.CreateUriNode(U("http://example.org/Ada"));
         var p = factory.CreateUriNode(U("http://example.org/name"));
@@ -141,8 +144,10 @@ public class QuadStoreStorageProviderTests
         using var store = NewStore();
         var provider = new QuadStoreStorageProvider(store);
 
-        var g = new Graph();
-        g.BaseUri = U("http://example.org/g3");
+        var g = new Graph
+        {
+            BaseUri = U("http://example.org/g3")
+        };
         var factory = new NodeFactory();
         var s = factory.CreateUriNode(U("http://example.org/item"));
         var p = factory.CreateUriNode(U("http://example.org/count"));
@@ -293,7 +298,7 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/P")),
             factory.CreateUriNode(U("http://example.org/O")));
 
-        provider.UpdateGraph(graphUri, new[] { triple }, null!);
+        provider.UpdateGraph(graphUri, [triple], null!);
 
         store.Query(graph: "http://example.org/g").Should().ContainSingle();
     }
@@ -310,7 +315,7 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/P")),
             factory.CreateUriNode(U("http://example.org/O")));
 
-        provider.UpdateGraph("http://example.org/g", new[] { triple }, null!);
+        provider.UpdateGraph("http://example.org/g", [triple], null!);
 
         store.Query(graph: "http://example.org/g").Should().ContainSingle();
     }
@@ -328,7 +333,7 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/P")),
             factory.CreateUriNode(U("http://example.org/O")));
 
-        provider.UpdateGraph(graphNode, new[] { triple }, null!);
+        provider.UpdateGraph(graphNode, [triple], null!);
 
         store.Query(graph: "http://example.org/g").Should().ContainSingle();
     }
@@ -345,11 +350,11 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/O")));
 
         // Add a triple first
-        provider.UpdateGraph("http://example.org/g", new[] { triple }, null!);
+        provider.UpdateGraph("http://example.org/g", [triple], null!);
         store.Query(graph: "http://example.org/g").Should().ContainSingle();
 
         // Remove it
-        provider.UpdateGraph("http://example.org/g", null!, new[] { triple });
+        provider.UpdateGraph("http://example.org/g", null!, [triple]);
         store.Query(graph: "http://example.org/g").Should().BeEmpty();
     }
 
@@ -357,7 +362,7 @@ public class QuadStoreStorageProviderTests
     public void UpdateGraph_EmptyRemovals_DoesNotThrow()
     {
         var provider = NewProvider();
-        provider.Invoking(p => p.UpdateGraph("http://example.org/g", null!, Array.Empty<Triple>()))
+        provider.Invoking(p => p.UpdateGraph("http://example.org/g", null!, []))
             .Should().NotThrow();
     }
 
@@ -832,8 +837,10 @@ public class QuadStoreStorageProviderTests
         var provider = new QuadStoreStorageProvider(store);
         var graphUri = U("http://example.org/rt");
 
-        var original = new Graph();
-        original.BaseUri = graphUri;
+        var original = new Graph
+        {
+            BaseUri = graphUri
+        };
         var factory = new NodeFactory();
         original.Assert(new Triple(
             factory.CreateUriNode(U("http://example.org/Ada")),
@@ -897,10 +904,10 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/NewValue")));
 
         // Seed the old triple
-        provider.UpdateGraph("http://example.org/g", new[] { oldTriple }, null!);
+        provider.UpdateGraph("http://example.org/g", [oldTriple], null!);
 
         // In a single UpdateGraph call, remove old and add new
-        provider.UpdateGraph("http://example.org/g", new[] { newTriple }, new[] { oldTriple });
+        provider.UpdateGraph("http://example.org/g", [newTriple], [oldTriple]);
 
         var loaded = new Graph();
         provider.LoadGraph(loaded, "http://example.org/g");
@@ -931,10 +938,10 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/Z")));
 
         // Add one triple
-        provider.UpdateGraph("http://example.org/g", new[] { existing }, null!);
+        provider.UpdateGraph("http://example.org/g", [existing], null!);
 
         // Try to remove a triple that doesn't exist — should not throw
-        provider.Invoking(p => p.UpdateGraph("http://example.org/g", null!, new[] { nonExistent }))
+        provider.Invoking(p => p.UpdateGraph("http://example.org/g", null!, [nonExistent]))
             .Should().NotThrow();
 
         // Original triple should still be there
@@ -956,7 +963,7 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/O")));
 
         // Pass null for removals (backward compat)
-        provider.UpdateGraph("http://example.org/g", new[] { triple }, null!);
+        provider.UpdateGraph("http://example.org/g", [triple], null!);
 
         store.Query(graph: "http://example.org/g").Should().ContainSingle();
     }
@@ -980,8 +987,8 @@ public class QuadStoreStorageProviderTests
             factory.CreateUriNode(U("http://example.org/P")),
             factory.CreateUriNode(U("http://example.org/O2")));
 
-        provider.UpdateGraph(graphUri, new[] { t1 }, null!);
-        provider.UpdateGraph(graphUri, new[] { t2 }, null!);
+        provider.UpdateGraph(graphUri, [t1], null!);
+        provider.UpdateGraph(graphUri, [t2], null!);
 
         var loaded = new Graph();
         provider.LoadGraph(loaded, graphUri);
